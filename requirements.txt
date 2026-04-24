@@ -1,0 +1,9 @@
+streamlit>=1.36.0
+plotly>=5.18.0
+pandas>=2.0.0
+numpy>=1.24.0
+statsmodels>=0.14.0
+scipy>=1.11.0
+geopandas>=0.14.0
+shapely>=2.0.0
+ubigeos-peru>=0.1.0
