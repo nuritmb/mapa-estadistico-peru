@@ -147,11 +147,220 @@ BIVARIATE_CLASS_LABELS = {
     "2_0": "Alto P · Bajo S", "2_1": "Alto P · Medio S", "2_2": "Alto P · Alto S",
 }
 
+# ─── i18n ─────────────────────────────────────────────────────────────────────
+STRINGS = {
+    # Sidebar chrome
+    "app_title":            {"es": "🗳️ Perú 2021",                     "en": "🗳️ Peru 2021"},
+    "app_subtitle":         {"es": "Elecciones presidenciales",          "en": "Presidential elections"},
+    "geo_level":            {"es": "🌎 Nivel geográfico",               "en": "🌎 Geographic level"},
+    "unit_label":           {"es": "Unidad de análisis",                 "en": "Unit of analysis"},
+    "distrito":             {"es": "Distrito",                           "en": "District"},
+    "provincia":            {"es": "Provincia",                          "en": "Province"},
+    "departamento":         {"es": "Departamento",                       "en": "Department"},
+    "level_help":           {
+        "es": ("Elige a qué escala agregar los datos. Votos se suman; porcentajes se recalculan "
+               "a partir de las sumas (no promedios, para evitar la paradoja de Simpson). "
+               "Variables censales se promedian **ponderando por población**."),
+        "en": ("Choose the geographic scale. Votes are summed; percentages are recomputed "
+               "from sums (not averages, to avoid Simpson's paradox). "
+               "Census variables are **population-weighted** averages."),
+    },
+    "representation":       {"es": "Representación",                     "en": "Representation"},
+    "choropleth":           {"es": "Coropleta",                          "en": "Choropleth"},
+    "bubbles":              {"es": "Burbujas (por población)",            "en": "Bubbles (by population)"},
+    "repr_help":            {
+        "es": ("**Coropleta**: colorea el polígono completo, da igual peso a cada área geográfica.\n\n"
+               "**Burbujas**: cada unidad es un círculo cuya área es proporcional a su población total."),
+        "en": ("**Choropleth**: colours the full polygon; each area gets equal visual weight.\n\n"
+               "**Bubbles**: each unit is a circle whose area is proportional to its total population."),
+    },
+    "visualization":        {"es": "🗺️ Visualización",                  "en": "🗺️ Visualization"},
+    "round":                {"es": "Vuelta",                             "en": "Round"},
+    "second_round":         {"es": "Segunda vuelta",                     "en": "Second round"},
+    "first_round":          {"es": "Primera vuelta",                     "en": "First round"},
+    "color_mode":           {"es": "Modo de color",                      "en": "Color mode"},
+    "winner":               {"es": "Ganador",                            "en": "Winner"},
+    "vote_pct":             {"es": "Porcentaje de voto",                 "en": "Vote share"},
+    "margin":               {"es": "Margen",                             "en": "Margin"},
+    "swing":                {"es": "Swing (R1→R2)",                      "en": "Swing (R1→R2)"},
+    "mode_help":            {
+        "es": ("**Ganador**: qué candidato obtuvo más votos.\n\n"
+               "**Porcentaje de voto**: % de votos válidos para un candidato elegido.\n\n"
+               "**Margen**: % Castillo − % Fujimori (2ª v.). Positivo = gana Castillo.\n\n"
+               "**Swing**: cuántos pp ganó (o perdió) Castillo entre la 1ª y la 2ª vuelta."),
+        "en": ("**Winner**: which candidate received the most votes.\n\n"
+               "**Vote share**: % of valid votes for a chosen candidate.\n\n"
+               "**Margin**: % Castillo − % Fujimori (2nd round). Positive = Castillo wins.\n\n"
+               "**Swing**: how many pp Castillo gained (or lost) from 1st to 2nd round."),
+    },
+    "candidate":            {"es": "Candidato",                          "en": "Candidate"},
+    "bivariate_chk":        {"es": "🔬 Comparar con variable de contexto (bivariado)",
+                             "en": "🔬 Compare with context variable (bivariate)"},
+    "bivariate_help":       {
+        "es": ("Muestra dos variables en un solo mapa usando una paleta 3×3. "
+               "El eje primario (filas) es tu variable electoral actual. "
+               "El eje secundario (columnas) es la variable de contexto que elijas."),
+        "en": ("Displays two variables on one map using a 3×3 palette. "
+               "The primary axis (rows) is your current electoral variable. "
+               "The secondary axis (columns) is the context variable you choose."),
+    },
+    "context_var":          {"es": "Variable de contexto (secundaria)",  "en": "Context variable (secondary)"},
+    "binning":              {"es": "Método de binning",                  "en": "Binning method"},
+    "quantiles":            {"es": "Cuantiles (tercios)",                "en": "Quantiles (thirds)"},
+    "equal_width":          {"es": "Ancho igual",                        "en": "Equal width"},
+    "binning_help":         {
+        "es": ("**Cuantiles**: cada clase contiene ≈1/3 de los distritos. Útil para distribuciones sesgadas.\n\n"
+               "**Ancho igual**: divide el rango numérico en tres tramos iguales."),
+        "en": ("**Quantiles**: each class contains ≈1/3 of units. Good for skewed distributions.\n\n"
+               "**Equal width**: divides the numeric range into three equal intervals."),
+    },
+    "primary_var":          {"es": "Variable primaria",                  "en": "Primary variable"},
+    "secondary_var":        {"es": "Variable secundaria",                "en": "Secondary variable"},
+    "single_layer":         {"es": "📊 Capa única",                     "en": "📊 Single layer"},
+    "dataset":              {"es": "Dataset",                            "en": "Dataset"},
+    "none":                 {"es": "Ninguna",                            "en": "None"},
+    "census":               {"es": "Censo",                              "en": "Census"},
+    "conflict":             {"es": "Conflicto armado",                   "en": "Armed conflict"},
+    "land_reform":          {"es": "Reforma agraria",                    "en": "Land reform"},
+    "layer_help":           {
+        "es": "Alternativa al modo bivariado: muestra SOLO la capa de contexto.",
+        "en": "Alternative to bivariate mode: shows ONLY the context layer.",
+    },
+    "census_var":           {"es": "Variable censal",                    "en": "Census variable"},
+    "conflict_var":         {"es": "Variable de conflicto",              "en": "Conflict variable"},
+    "lr_var":               {"es": "Variable de reforma agraria",        "en": "Land reform variable"},
+    "filter":               {"es": "🔍 Filtrar",                        "en": "🔍 Filter"},
+    "department":           {"es": "Departamento",                       "en": "Department"},
+    "all":                  {"es": "Todos",                              "en": "All"},
+    # Tabs
+    "tab_map":              {"es": "🗺️ Mapa",                           "en": "🗺️ Map"},
+    "tab_corr":             {"es": "📈 Correlación",                    "en": "📈 Correlation"},
+    "tab_data":             {"es": "📋 Datos",                          "en": "📋 Data"},
+    # Map tab
+    "back_btn":             {"es": "← Volver",                          "en": "← Back"},
+    "back_help":            {"es": "Limpiar selección y volver a la vista general",
+                             "en": "Clear selection and return to overview"},
+    "click_hint":           {"es": "💡 **Haz clic en cualquier {unit}** para ver el detalle.",
+                             "en": "💡 **Click any {unit}** to see details."},
+    "no_pop_warning":       {"es": "No hay columna `total_pop` disponible; cayendo a coropleta.",
+                             "en": "No `total_pop` column available; falling back to choropleth."},
+    "bivariate_legend":     {"es": "**Leyenda bivariada**",              "en": "**Bivariate legend**"},
+    "no_data":              {"es": "Sin datos",                          "en": "No data"},
+    "inherited":            {"es": "Valor heredado (1975)",              "en": "Inherited value (1975)"},
+    "imputed_caption":      {
+        "es": ("❗ **{n} {unit}** marcados con '!' tienen un valor *heredado*: los datos de "
+               "{source} provienen del mapa de distritos de 1975, y este {unit_s} fue creado "
+               "después. El valor mostrado es el del distrito-padre de 1975. Es una inferencia "
+               "espacial, no una medición directa."),
+        "en": ("❗ **{n} {unit}** marked with '!' have an *inherited* value: the {source} data "
+               "come from the 1975 district map, and this {unit_s} was created later. "
+               "The value shown is that of the 1975 parent district — a spatial inference, "
+               "not a direct measurement."),
+    },
+    "conflict_source":      {"es": "conflicto armado (CVR)",             "en": "armed conflict (CVR)"},
+    "lr_source":            {"es": "reforma agraria (Velasco)",          "en": "land reform (Velasco)"},
+    # Units (plural / singular)
+    "distritos":            {"es": "distritos",       "en": "districts"},
+    "provincias":           {"es": "provincias",      "en": "provinces"},
+    "departamentos":        {"es": "departamentos",   "en": "departments"},
+    "distrito_s":           {"es": "distrito",        "en": "district"},
+    "provincia_s":          {"es": "provincia",       "en": "province"},
+    "departamento_s":       {"es": "departamento",    "en": "department"},
+    # Detail panel
+    "province_label":       {"es": "Provincia",       "en": "Province"},
+    "department_label":     {"es": "Departamento",    "en": "Department"},
+    "castillo_r2":          {"es": "Castillo (2ª vuelta)",  "en": "Castillo (2nd round)"},
+    "fujimori_r2":          {"es": "Fujimori (2ª vuelta)",  "en": "Fujimori (2nd round)"},
+    "margin_label":         {"es": "Margen",               "en": "Margin"},
+    "wins":                 {"es": "gana",                 "en": "wins"},
+    "r1_votes":             {"es": "**Primera vuelta — votos por candidato**",
+                             "en": "**First round — votes by candidate**"},
+    "census_data":          {"es": "📋 Datos del Censo 2017",           "en": "📋 Census data (2017)"},
+    "conflict_data":        {"es": "⚔️ Conflicto armado (CVR)",         "en": "⚔️ Armed conflict (CVR)"},
+    "lr_data":              {"es": "🌾 Reforma agraria (Velasco)",      "en": "🌾 Land reform (Velasco)"},
+    "not_available":        {"es": "No disponible",                      "en": "Not available"},
+    # Scatter / correlation tab
+    "x_axis":               {"es": "Variable X (contexto)",              "en": "X variable (context)"},
+    "y_axis":               {"es": "Variable Y (electoral)",             "en": "Y variable (electoral)"},
+    "log_x":                {"es": "Log(X)",                             "en": "Log(X)"},
+    "log_y":                {"es": "Log(Y)",                             "en": "Log(Y)"},
+    "trim_pct":             {"es": "Recortar extremos (%)",              "en": "Trim extremes (%)"},
+    "controls":             {"es": "Controlar por (mantener constante)", "en": "Control for (hold constant)"},
+    "pearson":              {"es": "Pearson r",                          "en": "Pearson r"},
+    "spearman":             {"es": "Spearman ρ",                         "en": "Spearman ρ"},
+    # Data tab
+    "data_title":           {"es": "Tabla de datos por {unit}",         "en": "Data table by {unit}"},
+    "col_groups":           {"es": "Columnas a mostrar",                 "en": "Columns to display"},
+    "search":               {"es": "Buscar por nombre",                  "en": "Search by name"},
+}
+
+# Variable label dicts — bilingual. Call var_labels(dict_name) to get the
+# right language version for the current session.
+_CENSUS_VARS_EN = {
+    "pct_pobreza_total":       "Total poverty (%)",
+    "pct_pobreza_extrema":     "Extreme poverty (%)",
+    "idh_2019":                "HDI 2019",
+    "pct_rural":               "Rural area (%)",
+    "pct_quechua":             "Quechua speakers (%)",
+    "pct_aimara":              "Aymara speakers (%)",
+    "pct_indigenous_total":    "Indigenous language (%)",
+    "pct_castellano":          "Spanish speakers (%)",
+    "pct_sin_nivel":           "No education (%)",
+    "pct_primaria_o_menos":    "Primary or less (%)",
+    "pct_secundaria":          "Secondary (%)",
+    "pct_superior_cualquiera": "Higher education (%)",
+    "pct_hasta_secundaria":    "Up to secondary (%)",
+    "pct_superior":            "Higher education (%)",
+    "altitude":                "Altitude (m.a.s.l.)",
+    "pob_densidad_2020":       "Population density (hab/km²)",
+}
+_CONFLICT_VARS_EN = {
+    "cvr_deaths":          "CVR deaths (per capita)",
+    "cvr_events":          "CVR violent events",
+    "cvr_guerr_8088":      "Guerrilla 1980–88",
+    "cvr_guerr_8900":      "Guerrilla 1989–00",
+    "cvr_state_8088":      "State violence 1980–88",
+    "cvr_state_8900":      "State violence 1989–00",
+    "emergency_zone_1990": "Emergency zone 1990",
+    "guerrilla_presence":  "Guerrilla presence",
+    "marxist_vote_1980":   "Marxist vote 1980",
+    "illiteracy_1972":     "Illiteracy 1972",
+}
+_LAND_REFORM_VARS_EN = {
+    "landredist_pc":            "Land redistributed (per capita)",
+    "landredist_pcprivate":     "Private land redistributed (per capita)",
+    "landdist_uncult_pc":       "Uncultivated land redistributed (per capita)",
+    "D_LRSurfaceArea50th":      "Above-median land reform surface area",
+    "LRpercap_calweighted_log": "Land reform per capita (log, calorie-weighted)",
+    "prop_ha_ths":              "Hectares redistributed (thousands)",
+}
+
+
+def t(key: str) -> str:
+    """Return the UI string for `key` in the current session language."""
+    lang = st.session_state.get("lang", "es")
+    entry = STRINGS.get(key, {})
+    return entry.get(lang, entry.get("es", key))
+
+
+def _vlabels(es_dict: dict, en_dict: dict) -> dict:
+    """Return the right variable-label dict for the current language."""
+    if st.session_state.get("lang", "es") == "en":
+        return en_dict
+    return es_dict
+
+
+def census_labels() -> dict:    return _vlabels(CENSUS_VARS, _CENSUS_VARS_EN)
+def conflict_labels() -> dict:  return _vlabels(CONFLICT_VARS, _CONFLICT_VARS_EN)
+def lr_labels() -> dict:        return _vlabels(LAND_REFORM_VARS, _LAND_REFORM_VARS_EN)
+def all_context_labels() -> dict:
+    return {**census_labels(), **conflict_labels(), **lr_labels()}
+
 # "No data" styling — keep visually distinct from every palette so that a
 # district missing a value can't be confused with a low value. Near-black
 # reads as "something different is going on here" against any colorscale.
 NODATA_COLOR = "#2b2b2b"
-NODATA_LABEL = "Sin datos"
+NODATA_LABEL = "Sin datos"  # overridden at render time via t("no_data")
 
 # Imputed-data marker: small "!" rendered at the centroid of districts whose
 # current value was inherited from a 1975 parent (land reform or CVR conflict
@@ -714,8 +923,8 @@ def build_map(geojson, df, color_col, color_label,
                 line=dict(color="rgba(80,80,80,0.55)", width=0.25),
             ),
             hovertext=df_missing["_label"],
-            hovertemplate="<b>%{hovertext}</b><br>" + NODATA_LABEL + "<extra></extra>",
-            name=NODATA_LABEL,
+            hovertemplate="<b>%{hovertext}</b><br>" + t("no_data") + "<extra></extra>",
+            name=t("no_data"),
             showlegend=True,
             legendgroup="nodata",
         ))
@@ -739,7 +948,7 @@ def build_map(geojson, df, color_col, color_label,
                 text=[IMPUTED_MARK] * len(m),
                 textfont=dict(size=14, color=IMPUTED_COLOR, family="Arial Black"),
                 hoverinfo="skip",
-                name="Valor heredado (1975)",
+                name=t("inherited"),
                 showlegend=True,
             ))
 
@@ -875,12 +1084,12 @@ def build_bubble_map(df, color_col, color_label,
                 color=NODATA_COLOR,
                 opacity=0.55,
             ),
-            name=NODATA_LABEL,
+            name=t("no_data"),
             text=missing["_label"],
             customdata=np.stack([missing["ubigeo"], missing[size_col]], axis=-1),
             hovertemplate=(
                 "<b>%{text}</b><br>"
-                f"{NODATA_LABEL}<br>"
+                + t("no_data") + "<br>"
                 "Población: %{customdata[1]:,.0f}<extra></extra>"
             ),
             showlegend=True,
@@ -897,7 +1106,7 @@ def build_bubble_map(df, color_col, color_label,
                 text=[IMPUTED_MARK] * len(imp),
                 textfont=dict(size=14, color=IMPUTED_COLOR, family="Arial Black"),
                 hoverinfo="skip",
-                name="Valor heredado (1975)",
+                name=t("inherited"),
                 showlegend=True,
             ))
 
@@ -943,8 +1152,8 @@ def show_district_detail(row: pd.Series, level_key: str = "distrito",
     # Header row: back button on the left, title on the right
     hdr_back, hdr_title = st.columns([1, 5])
     with hdr_back:
-        if st.button("← Volver", key=f"clear_selection_{level_key}",
-                     help="Limpiar selección y volver a la vista general",
+        if st.button(t("back_btn"), key=f"clear_selection_{level_key}",
+                     help=t("back_help"),
                      use_container_width=True):
             st.session_state[on_clear_key] = st.session_state.get(on_clear_key, 0) + 1
             st.rerun()
@@ -1625,194 +1834,164 @@ def main():
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
-        st.title("🗳️ Perú 2021")
-        st.caption("Elecciones presidenciales")
+        # Language toggle — top of sidebar, affects everything below
+        lang_col, _ = st.columns([1, 2])
+        with lang_col:
+            lang_en = st.toggle("🇬🇧 English", key="lang_toggle")
+        st.session_state["lang"] = "en" if lang_en else "es"
+
+        st.title(t("app_title"))
+        st.caption(t("app_subtitle"))
 
         st.divider()
-        st.subheader("🌎 Nivel geográfico")
+        st.subheader(t("geo_level"))
         level = st.radio(
-            "Unidad de análisis",
-            ["Distrito", "Provincia", "Departamento"],
+            t("unit_label"),
+            [t("distrito"), t("provincia"), t("departamento")],
             horizontal=True,
             key="level",
-            help=(
-                "Elige a qué escala agregar los datos. "
-                "Votos se suman; porcentajes se recalculan a partir de las sumas "
-                "(no promedios, para evitar la paradoja de Simpson). "
-                "Variables censales se promedian **ponderando por población**."
-            ),
+            help=t("level_help"),
         )
-        level_key = {"Distrito": "distrito", "Provincia": "provincia", "Departamento": "departamento"}[level]
+        level_key = {
+            t("distrito"):     "distrito",
+            t("provincia"):    "provincia",
+            t("departamento"): "departamento",
+        }[level]
 
         # Pull the right df and geojson for this level
         geojson = levels[level_key]["geojson"]
         df = levels[level_key]["df"]
 
         representation = st.radio(
-            "Representación",
-            ["Coropleta", "Burbujas (por población)"],
+            t("representation"),
+            [t("choropleth"), t("bubbles")],
             horizontal=True,
             key="representation",
-            help=(
-                "**Coropleta**: colorea el polígono completo, da igual peso a cada área "
-                "geográfica (Lima Metro y un distrito amazónico vacío pesan igual visualmente).\n\n"
-                "**Burbujas**: cada unidad es un círculo cuya área es proporcional a su "
-                "población total. Los distritos vacíos se encogen; Lima aparece enorme. "
-                "Útil para preguntas del tipo 'dónde están los votantes'."
-            ),
+            help=t("repr_help"),
         )
 
         st.divider()
-        st.subheader("🗺️ Visualización")
+        st.subheader(t("visualization"))
 
-        vuelta = st.radio("Vuelta", ["Segunda vuelta", "Primera vuelta"],
+        vuelta = st.radio(t("round"), [t("second_round"), t("first_round")],
                           horizontal=True, key="vuelta")
-        is_r2 = vuelta == "Segunda vuelta"
+        is_r2 = vuelta == t("second_round")
 
         mode_opts = (
-            ["Ganador", "Porcentaje de voto", "Margen", "Swing (R1→R2)"]
+            [t("winner"), t("vote_pct"), t("margin"), t("swing")]
             if is_r2
-            else ["Ganador", "Porcentaje de voto"]
+            else [t("winner"), t("vote_pct")]
         )
-        mode = st.selectbox(
-            "Modo de color", mode_opts, key="mode",
-            help=(
-                "**Ganador**: qué candidato obtuvo más votos.\n\n"
-                "**Porcentaje de voto**: % de votos válidos para un candidato elegido.\n\n"
-                "**Margen**: % Castillo − % Fujimori (2ª v.). Positivo = gana Castillo.\n\n"
-                "**Swing (R1→R2)**: cuántos puntos porcentuales ganó (o perdió) "
-                "Castillo entre la 1ª y la 2ª vuelta — es decir, `% Castillo 2ª v. − "
-                "% Perú Libre 1ª v.`. Positivo (rojo) = ganó terreno; negativo "
-                "(magenta) = lo perdió. Ojo: como en 2ª vuelta solo quedan dos "
-                "candidatos, los votantes de los eliminados se reparten, así que el "
-                "swing es casi siempre positivo a nivel nacional — lo interesante es "
-                "qué distritos swingaron más (o menos) de lo esperado."
-            ),
-        )
+        mode = st.selectbox(t("color_mode"), mode_opts, key="mode", help=t("mode_help"))
+        # Normalise mode back to a stable internal key regardless of language
+        _mode_to_key = {
+            t("winner"): "winner", t("vote_pct"): "vote_pct",
+            t("margin"): "margin", t("swing"): "swing",
+        }
+        mode_key = _mode_to_key.get(mode, mode)
 
         cand_abbr = None
-        if mode == "Porcentaje de voto":
+        if mode_key == "vote_pct":
             if is_r2:
-                cand_r2 = st.radio("Candidato", ["Castillo", "Fujimori"], horizontal=True)
+                cand_r2 = st.radio(t("candidate"), ["Castillo", "Fujimori"], horizontal=True)
                 cand_abbr = "castillo" if cand_r2 == "Castillo" else "fujimori"
             else:
                 cand_options = {abbr: f"{name} ({abbr})" for abbr, (name, _) in CANDIDATES_R1.items()}
                 cand_abbr = st.selectbox(
-                    "Candidato",
+                    t("candidate"),
                     options=list(cand_options.keys()),
                     format_func=lambda k: cand_options[k],
                     index=list(cand_options.keys()).index("PL"),
                     key="cand_r1",
                 )
 
-        # Bivariate mode: show electoral + context var on the same map
-        bivariate_on = st.checkbox(
-            "🔬 Comparar con variable de contexto (bivariado)",
-            help=(
-                "Muestra dos variables en un solo mapa usando una paleta 3×3. "
-                "El eje primario (filas) es tu variable electoral actual. "
-                "El eje secundario (columnas) es la variable de contexto que elijas."
-            ),
-            key="bivariate_on",
-        )
+        # Bivariate mode
+        bivariate_on = st.checkbox(t("bivariate_chk"), help=t("bivariate_help"), key="bivariate_on")
         bivariate_sec_col = None
         bivariate_sec_label = None
         if bivariate_on:
-            all_context = {**CENSUS_VARS, **CONFLICT_VARS, **LAND_REFORM_VARS}
+            _all_ctx = all_context_labels()
             bivariate_sec_col = st.selectbox(
-                "Variable de contexto (secundaria)",
-                options=list(all_context.keys()),
-                format_func=lambda k: all_context[k],
+                t("context_var"),
+                options=list(_all_ctx.keys()),
+                format_func=lambda k: _all_ctx[k],
                 key="bv_sec",
             )
-            bivariate_sec_label = all_context[bivariate_sec_col]
+            bivariate_sec_label = _all_ctx[bivariate_sec_col]
 
             bivariate_binning_label = st.radio(
-                "Método de binning",
-                ["Cuantiles (tercios)", "Ancho igual"],
+                t("binning"),
+                [t("quantiles"), t("equal_width")],
                 horizontal=True, key="bv_binning",
-                help=(
-                    "**Cuantiles**: cada clase (bajo/medio/alto) contiene ≈1/3 de los "
-                    "distritos. Útil cuando la distribución es sesgada; los cortes se "
-                    "adaptan a los datos.\n\n"
-                    "**Ancho igual**: divide el **rango numérico** en tres tramos "
-                    "iguales. Los cortes son interpretables (p.ej. 0–33%, 33–67%, "
-                    "67–100%) pero los grupos pueden estar muy desbalanceados — "
-                    "casi nadie queda en 'alto' si hay pocos valores extremos."
-                ),
+                help=t("binning_help"),
             )
             bivariate_binning = (
-                "quantile" if bivariate_binning_label.startswith("Cuantil") else "equal_width"
+                "quantile" if bivariate_binning_label == t("quantiles") else "equal_width"
             )
 
-            # Show the user exactly which electoral variable is the primary axis.
-            # (When mode is "Ganador" — categorical — we fall back to a continuous
-            # proxy: Margen for R2, % del ganador for R1.)
             if is_r2:
-                if mode == "Porcentaje de voto":
+                if mode_key == "vote_pct":
                     primary_preview = (
                         "Castillo 2ª v. (%)" if cand_abbr == "castillo"
                         else "Fujimori 2ª v. (%)"
                     )
-                elif mode == "Swing (R1→R2)":
+                elif mode_key == "swing":
                     primary_preview = "Swing Castillo (pp)"
-                else:  # Ganador or Margen
+                else:
                     primary_preview = "Margen Castillo − Fujimori (pp)"
             else:
-                if mode == "Porcentaje de voto":
+                if mode_key == "vote_pct":
                     primary_preview = f"{CANDIDATES_R1[cand_abbr][0]} 1ª v. (%)"
                 else:
                     primary_preview = "% del ganador (1ª v.)"
 
             st.info(
-                f"**Variable primaria** (filas de la paleta):  \n{primary_preview}  \n\n"
-                f"**Variable secundaria** (columnas):  \n{bivariate_sec_label}",
+                f"**{t('primary_var')}** (filas de la paleta):  \n{primary_preview}  \n\n"
+                f"**{t('secondary_var')}** (columnas):  \n{bivariate_sec_label}",
                 icon="🎯",
             )
 
         st.divider()
-        st.subheader("📊 Capa única")
+        st.subheader(t("single_layer"))
         layer_type = st.radio(
-            "Dataset",
-            ["Ninguna", "Censo", "Conflicto armado", "Reforma agraria"],
+            t("dataset"),
+            [t("none"), t("census"), t("conflict"), t("land_reform")],
             key="layer_type",
-            help=(
-                "Alternativa al modo bivariado: muestra SOLO la capa de contexto "
-                "(sin los datos electorales) para explorar el mapa del censo, "
-                "del conflicto armado interno o de la reforma agraria (Velasco, 1969-)."
-            ),
+            help=t("layer_help"),
         )
         overlay_col = None
         overlay_label = None
-        if layer_type == "Censo":
-            overlay_col = st.selectbox("Variable censal",
-                                       options=list(CENSUS_VARS.keys()),
-                                       format_func=lambda k: CENSUS_VARS[k],
+        _cl = census_labels(); _cfl = conflict_labels(); _lrl = lr_labels()
+        if layer_type == t("census"):
+            overlay_col = st.selectbox(t("census_var"),
+                                       options=list(_cl.keys()),
+                                       format_func=lambda k: _cl[k],
                                        key="census_var")
-            overlay_label = CENSUS_VARS[overlay_col]
-        elif layer_type == "Conflicto armado":
-            overlay_col = st.selectbox("Variable de conflicto",
-                                       options=list(CONFLICT_VARS.keys()),
-                                       format_func=lambda k: CONFLICT_VARS[k],
+            overlay_label = _cl[overlay_col]
+        elif layer_type == t("conflict"):
+            overlay_col = st.selectbox(t("conflict_var"),
+                                       options=list(_cfl.keys()),
+                                       format_func=lambda k: _cfl[k],
                                        key="conflict_var")
-            overlay_label = CONFLICT_VARS[overlay_col]
-        elif layer_type == "Reforma agraria":
-            overlay_col = st.selectbox("Variable de reforma agraria",
-                                       options=list(LAND_REFORM_VARS.keys()),
-                                       format_func=lambda k: LAND_REFORM_VARS[k],
+            overlay_label = _cfl[overlay_col]
+        elif layer_type == t("land_reform"):
+            overlay_col = st.selectbox(t("lr_var"),
+                                       options=list(_lrl.keys()),
+                                       format_func=lambda k: _lrl[k],
                                        key="lr_var")
-            overlay_label = LAND_REFORM_VARS[overlay_col]
+            overlay_label = _lrl[overlay_col]
 
         st.divider()
-        st.subheader("🔍 Filtrar")
-        dept_filter = st.selectbox("Departamento", ["Todos"] + depts, key="dept")
+        st.subheader(t("filter"))
+        _all_label = t("all")
+        dept_filter = st.selectbox(t("department"), [_all_label] + depts, key="dept")
 
     # ── Filter dataframe ───────────────────────────────────────────────────────
     plot_df = df.copy()
     center = {"lat": -9.19, "lon": -75.0}
     zoom = _LEVEL_ZOOM_NATIONAL[level_key]
 
-    if dept_filter != "Todos":
+    if dept_filter != t("all"):
         plot_df = plot_df[plot_df["DEPARTAMENTO"] == dept_filter]
         if "latitude" in plot_df.columns and plot_df["latitude"].notna().any():
             center = {
@@ -1828,27 +2007,26 @@ def main():
     if bivariate_on and bivariate_sec_col:
         # Pick primary electoral column based on current mode
         if is_r2:
-            if mode == "Porcentaje de voto":
+            if mode_key == "vote_pct":
                 bivariate_primary_col = f"r2_pct_{cand_abbr}"
                 bivariate_primary_label = (
-                    f"Castillo 2ª v. (%)" if cand_abbr == "castillo"
-                    else f"Fujimori 2ª v. (%)"
+                    "Castillo 2ª v. (%)" if cand_abbr == "castillo"
+                    else "Fujimori 2ª v. (%)"
                 )
-            elif mode == "Swing (R1→R2)":
+            elif mode_key == "swing":
                 bivariate_primary_col = "swing"
                 bivariate_primary_label = "Swing Castillo (pp)"
-            else:  # Ganador or Margen → use margin
+            else:
                 bivariate_primary_col = "r2_margin"
                 bivariate_primary_label = "Margen Castillo−Fujimori"
         else:
-            if mode == "Porcentaje de voto":
+            if mode_key == "vote_pct":
                 bivariate_primary_col = f"r1_pct_{cand_abbr}"
                 bivariate_primary_label = f"{CANDIDATES_R1[cand_abbr][0]} 1ª v. (%)"
-            else:  # Ganador → use winner_pct
+            else:
                 bivariate_primary_col = "r1_winner_pct"
                 bivariate_primary_label = "% voto del ganador (1ª v.)"
 
-        # Classify and swap in bivariate config
         plot_df, bv_color_map, bv_edges = compute_bivariate_classes(
             plot_df, bivariate_primary_col, bivariate_sec_col,
             binning=bivariate_binning,
@@ -1862,26 +2040,25 @@ def main():
         map_title = f"Bivariado: {bivariate_primary_label} × {bivariate_sec_label}"
 
     elif overlay_col:
-        # Overlay mode: show census/conflict variable
         color_col = overlay_col
         color_label = overlay_label
         colorscale = "YlOrRd"
         range_color = None
         categorical = False
         color_map = None
-        map_title = f"Capa: {overlay_label}"
+        map_title = f"{t('single_layer')}: {overlay_label}"
 
     elif is_r2:
-        if mode == "Ganador":
+        if mode_key == "winner":
             color_col = "r2_winner"
             color_map = {"Castillo": PARTY_COLORS["PL"], "Fujimori": PARTY_COLORS["FP"]}
             categorical = True
-            color_label = "Ganador"
+            color_label = t("winner")
             colorscale = None
             range_color = None
-            map_title = "Ganador — Segunda vuelta"
+            map_title = f"{t('winner')} — {t('second_round')}"
 
-        elif mode == "Porcentaje de voto":
+        elif mode_key == "vote_pct":
             color_col = f"r2_pct_{cand_abbr}"
             name = "Castillo" if cand_abbr == "castillo" else "Fujimori"
             color_label = f"{name} (%)"
@@ -1889,48 +2066,47 @@ def main():
             range_color = [0, 100]
             categorical = False
             color_map = None
-            map_title = f"Porcentaje de voto — {name} (2ª vuelta)"
+            map_title = f"{t('vote_pct')} — {name} ({t('second_round')})"
 
-        elif mode == "Margen":
+        elif mode_key == "margin":
             color_col = "r2_margin"
-            color_label = "Margen (pp)"
-            # Symmetric around 0: red=Castillo, blue=Fujimori
+            color_label = f"{t('margin')} (pp)"
             abs_max = float(plot_df["r2_margin"].abs().quantile(0.98))
             colorscale = [
-                [0.0,   PARTY_COLORS["FP"]],
-                [0.5,   "#f5f5f5"],
-                [1.0,   PARTY_COLORS["PL"]],
+                [0.0, PARTY_COLORS["FP"]],
+                [0.5, "#f5f5f5"],
+                [1.0, PARTY_COLORS["PL"]],
             ]
             range_color = [-abs_max, abs_max]
             categorical = False
             color_map = None
-            map_title = "Margen Castillo − Fujimori (2ª vuelta)"
+            map_title = f"{t('margin')} Castillo − Fujimori ({t('second_round')})"
 
-        elif mode == "Swing (R1→R2)":
+        elif mode_key == "swing":
             color_col = "swing"
-            color_label = "Swing (pp)"
+            color_label = f"{t('swing')} (pp)"
             abs_max = float(plot_df["swing"].abs().quantile(0.98))
             colorscale = [
-                [0.0,   "#b5179e"],
-                [0.5,   "#f5f5f5"],
-                [1.0,   PARTY_COLORS["PL"]],
+                [0.0, "#b5179e"],
+                [0.5, "#f5f5f5"],
+                [1.0, PARTY_COLORS["PL"]],
             ]
             range_color = [-abs_max, abs_max]
             categorical = False
             color_map = None
-            map_title = "Swing Castillo: ganancia desde 1ª a 2ª vuelta"
+            map_title = f"{t('swing')} Castillo (R1→R2)"
 
     else:  # R1
-        if mode == "Ganador":
+        if mode_key == "winner":
             color_col = "r1_winner"
             categorical = True
             color_map = {abbr: PARTY_COLORS.get(abbr, "#888") for abbr in df["r1_winner"].unique()}
-            color_label = "Partido ganador"
+            color_label = t("winner")
             colorscale = None
             range_color = None
-            map_title = "Ganador por distrito — Primera vuelta"
+            map_title = f"{t('winner')} — {t('first_round')}"
 
-        elif mode == "Porcentaje de voto":
+        elif mode_key == "vote_pct":
             color_col = f"r1_pct_{cand_abbr}"
             name = CANDIDATES_R1[cand_abbr][0]
             color_label = f"{name} (%)"
@@ -1938,7 +2114,7 @@ def main():
             range_color = [0, plot_df[color_col].quantile(0.99)]
             categorical = False
             color_map = None
-            map_title = f"Porcentaje de voto — {name} (1ª vuelta)"
+            map_title = f"{t('vote_pct')} — {name} ({t('first_round')})"
 
     # Hover extras
     if bivariate_on and bivariate_sec_col:
@@ -1967,7 +2143,7 @@ def main():
     # in the Datos search or toggling a checkbox there snaps the user back to
     # Mapa. Work around it by using a keyed radio as the navigator: the key
     # binds it to session_state, so the selection survives reruns.
-    TAB_LABELS = ["🗺️ Mapa", "📈 Correlación", "📋 Datos"]
+    TAB_LABELS = [t("tab_map"), t("tab_corr"), t("tab_data")]
     active_view = st.radio(
         "Vista",
         TAB_LABELS,
@@ -1982,15 +2158,15 @@ def main():
     )
 
     # ══ MAP TAB ═══════════════════════════════════════════════════════════════
-    if active_view == "🗺️ Mapa":
+    if active_view == t("tab_map"):
         # Headline stats strip
         show_national_totals(df)
-        unit_plural = {"distrito": "distritos", "provincia": "provincias",
-                       "departamento": "departamentos"}[level_key]
-        repr_tag = "burbujas por población" if representation == "Burbujas (por población)" else "coropleta"
+        unit_plural = {"distrito": t("distritos"), "provincia": t("provincias"),
+                       "departamento": t("departamentos")}[level_key]
+        repr_tag = t("bubbles") if representation == t("bubbles") else t("choropleth")
         st.caption(
             f"{'📊 ' + map_title}  ·  {len(plot_df):,} {unit_plural}  ·  {repr_tag}"
-            + (f"  ·  filtrado: **{dept_filter}**" if dept_filter != "Todos" else "")
+            + (f"  ·  filtrado: **{dept_filter}**" if dept_filter != t("all") else "")
         )
         st.divider()
 
@@ -2002,7 +2178,7 @@ def main():
             imputed_mask = plot_df[_imp_flag].fillna(False).astype(bool)
 
         # Build & display map — branch by representation
-        if representation == "Burbujas (por población)":
+        if representation == t("bubbles"):
             if "total_pop" not in plot_df.columns or plot_df["total_pop"].notna().sum() == 0:
                 st.warning(
                     "No hay columna `total_pop` disponible; cayendo a coropleta.",
@@ -2050,19 +2226,16 @@ def main():
         # inherited from a 1975 parent district.
         if imputed_mask is not None and imputed_mask.any():
             n_imp = int(imputed_mask.sum())
-            source_name = ("conflicto armado (CVR)" if color_col in CONFLICT_VARS
-                           else "reforma agraria (Velasco)")
-            unit = {"distrito": "distritos", "provincia": "provincias",
-                    "departamento": "departamentos"}[level_key]
+            source_name = (t("conflict_source") if color_col in CONFLICT_VARS
+                           else t("lr_source"))
+            unit = {"distrito": t("distritos"), "provincia": t("provincias"),
+                    "departamento": t("departamentos")}[level_key]
+            unit_s = {"distrito": t("distrito_s"), "provincia": t("provincia_s"),
+                      "departamento": t("departamento_s")}[level_key]
             st.caption(
-                f"❗ **{n_imp} {unit}** marcados con “!” tienen un valor "
-                f"*heredado*: los datos de {source_name} provienen del mapa "
-                "de distritos de 1975, y este " + unit[:-1] + " fue creado "
-                "después (o, a nivel de provincia/departamento, contiene al "
-                "menos un distrito en esa situación). Para esos casos el "
-                "valor mostrado es el del distrito-padre de 1975 cuyo "
-                "polígono contenía el punto representativo del distrito "
-                "actual. Es una inferencia espacial, no una medición directa."
+                t("imputed_caption").format(
+                    n=n_imp, unit=unit, source=source_name, unit_s=unit_s
+                )
             )
 
 
@@ -2076,7 +2249,7 @@ def main():
                     selection_mode="points",
                 )
             with legend_col:
-                st.markdown("**Leyenda bivariada**")
+                st.markdown(t("bivariate_legend"))
                 leg_fig = build_bivariate_legend(
                     bivariate_primary_label, bivariate_sec_label,
                     edges=bv_edges,
@@ -2133,39 +2306,43 @@ def main():
                 st.divider()
                 show_district_detail(match.iloc[0], level_key=level_key)
         else:
-            click_unit = {"distrito": "distrito", "provincia": "provincia",
-                          "departamento": "departamento"}[level_key]
+            click_unit = {"distrito": t("distrito_s"), "provincia": t("provincia_s"),
+                          "departamento": t("departamento_s")}[level_key]
             st.info(
-                f"💡 **Haz clic en cualquier {click_unit}** para ver el detalle: "
-                "resultados por candidato, indicadores del censo y datos de conflicto armado.",
+                t("click_hint").format(unit=click_unit),
                 icon="🖱️",
             )
 
     # ══ SCATTER TAB ═══════════════════════════════════════════════════════════
-    elif active_view == "📈 Correlación":
+    elif active_view == t("tab_corr"):
         show_scatter(df, level_key=level_key)
 
     # ══ DATA TAB ══════════════════════════════════════════════════════════════
-    elif active_view == "📋 Datos":
-        unit_plural_data = {"distrito": "distrito", "provincia": "provincia",
-                            "departamento": "departamento"}[level_key]
-        st.markdown(f"### Tabla de datos por {unit_plural_data}")
+    elif active_view == t("tab_data"):
+        unit_plural_data = {"distrito": t("distrito_s"), "provincia": t("provincia_s"),
+                            "departamento": t("departamento_s")}[level_key]
+        st.markdown(f"### {t('data_title').format(unit=unit_plural_data)}")
 
         # Column selector
+        _g_r2  = {"es": "Electoral 2ª vuelta", "en": "Electoral 2nd round"}[t("lang") if "lang" in STRINGS else "es"]
+        _g_r1  = {"es": "Electoral 1ª vuelta", "en": "Electoral 1st round"}[st.session_state.get("lang","es")]
+        _g_cen = {"es": "Censo",               "en": "Census"}[st.session_state.get("lang","es")]
+        _g_con = {"es": "Conflicto",           "en": "Conflict"}[st.session_state.get("lang","es")]
+
         col_groups = st.multiselect(
-            "Grupos de variables a mostrar",
-            ["Electoral 2ª vuelta", "Electoral 1ª vuelta", "Censo", "Conflicto"],
-            default=["Electoral 2ª vuelta"],
+            t("col_groups"),
+            [_g_r2, _g_r1, _g_cen, _g_con],
+            default=[_g_r2],
         )
 
         show_cols = ["ubigeo", "DEPARTAMENTO", "PROVINCIA", "DISTRITO"]
-        if "Electoral 2ª vuelta" in col_groups:
+        if _g_r2 in col_groups:
             show_cols += ["r2_pct_castillo", "r2_pct_fujimori", "r2_margin", "r2_winner", "swing"]
-        if "Electoral 1ª vuelta" in col_groups:
+        if _g_r1 in col_groups:
             show_cols += [f"r1_pct_{a}" for a in CANDIDATES_R1] + ["r1_winner", "r1_winner_pct"]
-        if "Censo" in col_groups:
+        if _g_cen in col_groups:
             show_cols += [c for c in CENSUS_VARS if c in df.columns]
-        if "Conflicto" in col_groups:
+        if _g_con in col_groups:
             show_cols += [c for c in CONFLICT_VARS if c in df.columns] + ["imputed"]
 
         show_cols = [c for c in show_cols if c in plot_df.columns]  # safety check
@@ -2174,8 +2351,7 @@ def main():
         table_df = plot_df[show_cols].copy()
 
         # Search
-        search_label = f"Buscar {unit_plural_data}"
-        search = st.text_input(search_label, placeholder="ej. Ayacucho", key="search")
+        search = st.text_input(t("search"), placeholder="ej. Ayacucho", key="search")
         if search:
             mask = table_df["DISTRITO"].str.contains(search, case=False, na=False)
             table_df = table_df[mask]
