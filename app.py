@@ -234,42 +234,14 @@ def load_data():
         "parent_ubigeos": "conflict_parent_ubigeos",
     })
 
-    # ── Data-quality patches ──────────────────────────────────────────────────
-    # The source census CSV has Purus (ubigeo 250401) with total_pop ≈ 29.38M —
-    # Peru's entire national population accidentally pasted into one cell.
-    # Real 2017 census value is ~5,692. Patch it and flag any similar anomaly.
-    _POP_KNOWN_FIXES = {"250401": 5692}  # ubigeo → real total_pop
-    for ubi, real in _POP_KNOWN_FIXES.items():
-        mask = census["ubigeo"] == ubi
-        if mask.any():
-            census.loc[mask, "total_pop"] = real
-    # Belt-and-braces: NaN-out any remaining implausibly-large district (> 2M;
-    # Lima Metro's largest district, San Juan de Lurigancho, is ~1.1M).
-    bad = census["total_pop"] > 2_000_000
-    if bad.any():
-        census.loc[bad, "total_pop"] = np.nan
-
-    # DQ-4: 12 districts have broken `pob_densidad_2020` values (ratios in
-    # [0.27, 0.50] or 48× vs 2017 recomputed — see scripts/audit_census.py).
-    # Without a ground-truth replacement, NaN them so they don't poison the
-    # pop-weighted means at province/department level.
-    _DENSITY_KNOWN_BAD = {
-        "150716",  # Lima · San Antonio (Huarochirí) — 48× too high
-        "050614",  # Ayacucho · Saisa
-        "180302",  # Moquegua · El Algarrobal
-        "211105",  # Puno · San Miguel
-        "090310",  # Huancavelica · San Antonio de Antaparco
-        "040115",  # Arequipa · Quequeña
-        "010108",  # Amazonas · Huancas
-        "210310",  # Puno · Usicayos
-        "211002",  # Puno · Ananea
-        "210405",  # Puno · Pisacoma
-        "190206",  # Pasco · Santa Ana de Tusi
-        "151002",  # Lima · Alis (Yauyos)
-    }
-    bad_density = census["ubigeo"].isin(_DENSITY_KNOWN_BAD)
-    if bad_density.any():
-        census.loc[bad_density, "pob_densidad_2020"] = np.nan
+    # ── Belt-and-braces guard ─────────────────────────────────────────────────
+    # DQ-1 and DQ-4 are now fixed in the source CSV. Keep a lightweight
+    # sanity guard so an accidental re-import of a bad CSV doesn't silently
+    # corrupt the app (NaN instead of poisoning aggregations).
+    census["total_pop"] = pd.to_numeric(census["total_pop"], errors="coerce")
+    bad_pop = census["total_pop"] > 2_000_000
+    if bad_pop.any():
+        census.loc[bad_pop, "total_pop"] = np.nan
 
     # Land reform (Velasco, 1969-) — 1975-era district list, 1,571 rows.
     # Post-1975 districts simply get NaN (same pattern as conflict, minus the
