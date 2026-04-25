@@ -779,6 +779,22 @@ def lr_labels() -> dict:        return _vlabels(LAND_REFORM_VARS, _LAND_REFORM_V
 def all_context_labels() -> dict:
     return {**census_labels(), **conflict_labels(), **lr_labels()}
 
+_ELECTION_VARS_EN = {
+    "r2_pct_castillo":  "Castillo 2nd round (%)",
+    "r2_pct_fujimori":  "Fujimori 2nd round (%)",
+    "r2_margin":        "Margin Castillo-Fujimori",
+    "swing":            "Swing Castillo (R1→R2)",
+    "r1_pct_PL":        "Castillo 1st round (%)",
+    "r1_pct_FP":        "Fujimori 1st round (%)",
+    "r1_pct_AP":        "Lescano 1st round (%)",
+    "r1_pct_RP":        "López Aliaga 1st round (%)",
+    "r1_pct_AvP":       "H. de Soto 1st round (%)",
+    "r1_pct_APP":       "Acuña 1st round (%)",
+    "r1_pct_JP":        "V. Mendoza 1st round (%)",
+    "r1_winner_pct":    "Winner 1st round (%)",
+}
+def election_labels() -> dict:  return _vlabels(ELECTION_VARS, _ELECTION_VARS_EN)
+
 # "No data" styling — keep visually distinct from every palette so that a
 # district missing a value can't be confused with a low value. Near-black
 # reads as "something different is going on here" against any colorscale.
@@ -1670,8 +1686,8 @@ def show_scatter(df, level_key: str = "distrito"):
     with st.expander(t("quick_guide_title"), expanded=False):
         st.markdown(t("quick_guide_body"))
 
-    all_x = {**CENSUS_VARS, **CONFLICT_VARS, **LAND_REFORM_VARS}
-    all_y = ELECTION_VARS
+    all_x = all_context_labels()
+    all_y = election_labels()
 
     c1, c2, c3 = st.columns([2, 2, 1])
     x_key = c1.selectbox(t("x_var_label"),
