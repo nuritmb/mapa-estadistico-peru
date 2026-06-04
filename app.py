@@ -69,6 +69,16 @@ CANDIDATES_R1 = {
     "APP":  ("César Acuña",         "Alianza para el Progreso"),
 }
 
+CANDIDATES_2026_R1 = {
+    "FP":    ("Keiko Fujimori",      "Fuerza Popular"),
+    "JxP":   ("Roberto Sánchez",     "Juntos por el Perú"),
+    "RP":    ("Rafael López Aliaga", "Renovación Popular"),
+    "APP":   ("César Acuña",         "Alianza para el Progreso"),
+    "AN":    ("Nicanor Boluarte",    "Ahora Nación"),
+    "Obras": ("Ricardo Belmont",     "Partido Cívico Obras"),
+    "PBG":   ("George Forsyth",      "Partido del Buen Gobierno"),
+}
+
 PARTY_COLORS = {
     "PL":   "#E63946",
     "FP":   "#F4A261",
@@ -88,6 +98,7 @@ PARTY_COLORS = {
     "RUNA": "#588157",
     "SP":   "#ADB5BD",
     "DD":   "#CDB4DB",
+    "JxP":  "#E63946",   # Roberto Sánchez — red
 }
 
 CENSUS_VARS = {
@@ -292,6 +303,18 @@ STRINGS = {
     "data_title":           {"es": "Tabla de datos por {unit}",         "en": "Data table by {unit}"},
     "col_groups":           {"es": "Columnas a mostrar",                 "en": "Columns to display"},
     "search":               {"es": "Buscar por nombre",                  "en": "Search by name"},
+    # Election year selector
+    "election_year":        {"es": "Elecciones",                         "en": "Elections"},
+    "election_2021":        {"es": "2021",                               "en": "2021"},
+    "election_2026":        {"es": "2026 (1ª vuelta)",                   "en": "2026 (1st round)"},
+    "r1_only_note":         {"es": "ℹ️ Solo primera vuelta disponible para 2026.",
+                             "en": "ℹ️ Only first round available for 2026."},
+    # 2026 national bar
+    "fujimori_r1_26":       {"es": "Fujimori (2026 R1)",                 "en": "Fujimori (2026 R1)"},
+    "sanchez_r1":           {"es": "Sánchez (2026 R1)",                  "en": "Sánchez (2026 R1)"},
+    "lopezaliaga_r1":       {"es": "López Aliaga (2026 R1)",             "en": "López Aliaga (2026 R1)"},
+    "distritos_fp":         {"es": "Distritos Fujimori",                 "en": "Districts (Fujimori)"},
+    "distritos_jxp":        {"es": "Distritos Sánchez",                  "en": "Districts (Sánchez)"},
     # National summary bar
     "castillo_nacional":    {"es": "Castillo (nacional)",                "en": "Castillo (national)"},
     "fujimori_nacional":    {"es": "Fujimori (nacional)",                "en": "Fujimori (national)"},
@@ -968,6 +991,100 @@ def load_data():
     }, depts
 
 
+@st.cache_data
+def load_data_2026():
+    """Load 2026 first-round election data at distrito level and aggregate."""
+    # GeoJSON (uses INEI ubigeo codes)
+    with open(os.path.join(DATA_DIR, "peru_distritos.geojson"), encoding="utf-8") as f:
+        geojson = json.load(f)
+
+    # Census (ubigeo = INEI, reniec = RENIEC)
+    census = pd.read_csv(
+        os.path.join(DATA_DIR, "census_master_distrito.csv"),
+        dtype={"ubigeo": str, "reniec": str},
+    )
+    census["reniec"] = census["reniec"].str.split(".").str[0].str.zfill(6)
+    drop_cols = [c for c in ["departamento", "provincia", "distrito"] if c in census.columns]
+    census = census.drop(columns=drop_cols)
+    census["total_pop"] = pd.to_numeric(census["total_pop"], errors="coerce")
+    bad_pop = census["total_pop"] > 2_000_000
+    if bad_pop.any():
+        census.loc[bad_pop, "total_pop"] = np.nan
+
+    # Election 2026 R1 (ubigeo = INEI) — domestic only
+    elec = pd.read_csv(
+        os.path.join(DATA_DIR, "election_2026_r1_distrito.csv"),
+        dtype={"ubigeo": str},
+    )
+    elec = elec[elec["ubigeo"].str[:2].astype(int) < 90].copy()
+    elec["ubigeo"] = elec["ubigeo"].str.zfill(6)
+
+    # Friendly label
+    elec["_label"] = (
+        elec["DISTRITO"].str.title()
+        + " · "
+        + elec["PROVINCIA"].str.title()
+        + " · "
+        + elec["DEPARTAMENTO"].str.title()
+    )
+
+    # Conflict
+    conflict_cols = ["ubigeo", "imputed", "n_parents", "parent_ubigeos"] + list(CONFLICT_VARS.keys())
+    conflict = pd.read_csv(
+        os.path.join(DATA_DIR, "conflict_distrito.csv"),
+        dtype={"ubigeo": str},
+    )
+    conflict = conflict[[c for c in conflict_cols if c in conflict.columns]]
+    conflict = conflict.rename(columns={
+        "imputed": "conflict_imputed",
+        "n_parents": "conflict_n_parents",
+        "parent_ubigeos": "conflict_parent_ubigeos",
+    })
+
+    # Land reform
+    lr_path = os.path.join(DATA_DIR, "land_reform_distrito.csv")
+    if os.path.exists(lr_path):
+        lr_keep = ["ubigeo", "imputed", "lr_parent_ubigeo"] + list(LAND_REFORM_VARS.keys())
+        lr = pd.read_csv(lr_path, dtype={"ubigeo": str})
+        lr = lr[[c for c in lr_keep if c in lr.columns]]
+        lr = lr.rename(columns={"imputed": "lr_imputed"})
+    else:
+        lr = pd.DataFrame(columns=["ubigeo"])
+
+    # Merge
+    df = elec.merge(census, on="ubigeo", how="left")
+    df = df.merge(conflict, on="ubigeo", how="left")
+    if not lr.empty:
+        df = df.merge(lr, on="ubigeo", how="left")
+
+    if "conflict_imputed" in df.columns:
+        df["imputed"] = df["conflict_imputed"]
+
+    if "pct_superior_cualquiera" in df.columns:
+        sup = pd.to_numeric(df["pct_superior_cualquiera"], errors="coerce")
+        df["pct_superior"] = sup
+        df["pct_hasta_secundaria"] = 100.0 - sup
+
+    # Departments list for filter
+    depts = sorted(df["DEPARTAMENTO"].dropna().unique().tolist())
+
+    # Build aggregations
+    df_prov = aggregate_to_level(df, "provincia")
+    df_dep  = aggregate_to_level(df, "departamento")
+
+    # Load aggregated GeoJSONs
+    with open(os.path.join(DATA_DIR, "peru_provincias.geojson"), encoding="utf-8") as f:
+        geojson_prov = json.load(f)
+    with open(os.path.join(DATA_DIR, "peru_departamentos.geojson"), encoding="utf-8") as f:
+        geojson_dep = json.load(f)
+
+    return {
+        "distrito":     {"geojson": geojson,      "df": df},
+        "provincia":    {"geojson": geojson_prov, "df": df_prov},
+        "departamento": {"geojson": geojson_dep,  "df": df_dep},
+    }, depts
+
+
 # ─── Aggregation to higher administrative levels ──────────────────────────────
 # Column-handling registry.  The key insight: we can't just groupby().mean() —
 # that gives the mathematically wrong answer for percentages (classic Simpson's
@@ -1016,6 +1133,13 @@ _POP_WEIGHTED_COLS = [
 # Hectares redistributed is a raw count → SUM, not pop-weighted.
 _SUM_COLS_LR = ["prop_ha_ths"]
 
+# 2026 R1 vote count columns (summed at province/dept level)
+_SUM_COLS_2026 = (
+    [f"r1_{a}" for a in CANDIDATES_2026_R1]
+    + ["r1_total_valid", "r1_blank", "r1_null", "total_pop",
+       "cvr_events", "population_1972_thousands"]
+)
+
 
 def _pop_weighted_mean(values: pd.Series, weights: pd.Series) -> float:
     """Population-weighted mean that ignores NaN values (without biasing weights).
@@ -1063,7 +1187,7 @@ def aggregate_to_level(df: pd.DataFrame, level: str) -> pd.DataFrame:
             row["DISTRITO"]     = g["DEPARTAMENTO"].iloc[0]
 
         # ── Additive columns ──────────────────────────────────────────────────
-        for col in list(_SUM_COLS) + list(_SUM_COLS_LR):
+        for col in list(_SUM_COLS) + list(_SUM_COLS_LR) + list(_SUM_COLS_2026):
             if col in g.columns:
                 row[col] = float(g[col].fillna(0).sum())
 
@@ -1090,7 +1214,7 @@ def aggregate_to_level(df: pd.DataFrame, level: str) -> pd.DataFrame:
     out = pd.DataFrame(rows)
 
     # ── Recompute derived percentages from summed raw counts ─────────────────
-    # R1 percentages
+    # R1 percentages (2021 candidates)
     if "r1_total_valid" in out.columns:
         denom = out["r1_total_valid"].replace(0, np.nan)
         for a in CANDIDATES_R1:
@@ -1098,7 +1222,7 @@ def aggregate_to_level(df: pd.DataFrame, level: str) -> pd.DataFrame:
             if vcol in out.columns:
                 out[pcol] = (out[vcol] / denom * 100).fillna(0)
 
-    # R1 winner
+    # R1 winner (2021 candidates)
     r1_pct_cols = [f"r1_pct_{a}" for a in CANDIDATES_R1 if f"r1_pct_{a}" in out.columns]
     if r1_pct_cols:
         out["r1_winner"] = (
@@ -1108,6 +1232,25 @@ def aggregate_to_level(df: pd.DataFrame, level: str) -> pd.DataFrame:
         out["r1_winner_name"] = out["r1_winner"].map(
             lambda x: CANDIDATES_R1.get(x, (x,))[0]
         )
+
+    # R1 percentages (2026 candidates) — only if 2026 vote cols are present
+    _2026_vote_cols = [f"r1_{a}" for a in CANDIDATES_2026_R1 if f"r1_{a}" in out.columns]
+    if _2026_vote_cols and "r1_total_valid" in out.columns:
+        denom26 = out["r1_total_valid"].replace(0, np.nan)
+        for a in CANDIDATES_2026_R1:
+            vcol, pcol = f"r1_{a}", f"r1_pct_{a}"
+            if vcol in out.columns:
+                out[pcol] = (out[vcol] / denom26 * 100).fillna(0)
+        # R1 winner (2026)
+        r1_pct_cols_26 = [f"r1_pct_{a}" for a in CANDIDATES_2026_R1 if f"r1_pct_{a}" in out.columns]
+        if r1_pct_cols_26:
+            out["r1_winner"] = (
+                out[r1_pct_cols_26].idxmax(axis=1).str.replace("r1_pct_", "", regex=False)
+            )
+            out["r1_winner_pct"] = out[r1_pct_cols_26].max(axis=1)
+            out["r1_winner_name"] = out["r1_winner"].map(
+                lambda x: CANDIDATES_2026_R1.get(x, (x,))[0]
+            )
 
     # R2 percentages, margin, winner
     if "r2_total_valid" in out.columns:
@@ -1567,7 +1710,8 @@ def build_bubble_map(df, color_col, color_label,
 
 # ─── District detail panel ────────────────────────────────────────────────────
 def show_district_detail(row: pd.Series, level_key: str = "distrito",
-                         on_clear_key: str = "map_key_counter"):
+                         on_clear_key: str = "map_key_counter",
+                         election_year: str = "2021"):
     """Render a detail panel for a clicked unit (district / province / department).
 
     The "← Volver al mapa" button clears the selection by bumping
@@ -1603,50 +1747,81 @@ def show_district_detail(row: pd.Series, level_key: str = "distrito",
         )
     st.divider()
 
-    # ── 2nd round ──
-    col1, col2, col3 = st.columns(3)
-    col1.metric(t("castillo_r2"), f"{row['r2_pct_castillo']:.1f}%")
-    col2.metric(t("fujimori_r2"), f"{row['r2_pct_fujimori']:.1f}%")
-    margin = row["r2_margin"]
-    winner = "Castillo" if margin > 0 else "Fujimori"
-    col3.metric(t("margin_label"), f"{abs(margin):.1f} pp", delta=f"{winner} {t('wins')}", delta_color="off")
+    if election_year == "2026":
+        # ── 2026 R1 top candidates ──
+        col1, col2, col3 = st.columns(3)
+        col1.metric(t("fujimori_r1_26"), f"{row.get('r1_pct_FP', np.nan):.1f}%")
+        col2.metric(t("sanchez_r1"), f"{row.get('r1_pct_JxP', np.nan):.1f}%")
+        col3.metric(t("lopezaliaga_r1"), f"{row.get('r1_pct_RP', np.nan):.1f}%")
 
-    # ── 1st round bar ──
-    st.markdown(t("r1_votes"))
-    _vcol = t("voto_pct_col")
-    _ccol = t("candidato")
-    r1_data = []
-    for abbr, (name, party) in CANDIDATES_R1.items():
-        col = f"r1_pct_{abbr}"
-        if col in row.index and not pd.isna(row[col]):
-            r1_data.append({_ccol: f"{name} ({abbr})", _vcol: row[col], "abbr": abbr})
-    r1_df = pd.DataFrame(r1_data).sort_values(_vcol, ascending=True)
-    bar_colors = [PARTY_COLORS.get(r["abbr"], "#888") for _, r in r1_df.iterrows()]
-    fig_bar = go.Figure(go.Bar(
-        x=r1_df[_vcol], y=r1_df[_ccol],
-        orientation="h",
-        marker_color=bar_colors,
-        text=r1_df[_vcol].map(lambda v: f"{v:.1f}%"),
-        textposition="outside",
-    ))
-    fig_bar.update_layout(
-        height=420, margin=dict(l=0, r=40, t=0, b=0),
-        xaxis_title=t("pct_votos"),
-        showlegend=False,
-        plot_bgcolor="white",
-        xaxis=dict(range=[0, r1_df[_vcol].max() * 1.2]),
-    )
-    st.plotly_chart(fig_bar, use_container_width=True)
+        # Bar chart of all 2026 candidates
+        r1_data_26 = []
+        for abbr, (name, party) in CANDIDATES_2026_R1.items():
+            pct_col = f"r1_pct_{abbr}"
+            if pct_col in row.index and not pd.isna(row.get(pct_col, np.nan)):
+                r1_data_26.append({"cand": f"{name} ({abbr})", "pct": row[pct_col], "abbr": abbr})
+        if r1_data_26:
+            r1_df_26 = pd.DataFrame(r1_data_26).sort_values("pct", ascending=True)
+            bar_colors_26 = [PARTY_COLORS.get(r["abbr"], "#888") for _, r in r1_df_26.iterrows()]
+            fig_bar_26 = go.Figure(go.Bar(
+                x=r1_df_26["pct"], y=r1_df_26["cand"], orientation="h",
+                marker_color=bar_colors_26,
+                text=r1_df_26["pct"].map(lambda v: f"{v:.1f}%"),
+                textposition="outside",
+            ))
+            fig_bar_26.update_layout(
+                height=300, margin=dict(l=0, r=40, t=0, b=0),
+                xaxis_title=t("pct_votos"), showlegend=False, plot_bgcolor="white",
+                xaxis=dict(range=[0, r1_df_26["pct"].max() * 1.25]),
+            )
+            st.plotly_chart(fig_bar_26, use_container_width=True)
+        # Fall through to census/conflict sections below
 
-    # ── Swing ──
-    swing_val = row.get("swing", np.nan)
-    if not pd.isna(swing_val):
-        direction = "📈" if swing_val >= 0 else "📉"
-        _swing_detail = t("swing_detail").format(r1=row['r1_pct_PL'], r2=row['r2_pct_castillo'])
-        st.markdown(
-            f"{t('swing_trace')} {direction} `{swing_val:+.1f} pp`  "
-            f"*({_swing_detail})*"
+    else:
+        # ── 2nd round ──
+        col1, col2, col3 = st.columns(3)
+        col1.metric(t("castillo_r2"), f"{row['r2_pct_castillo']:.1f}%")
+        col2.metric(t("fujimori_r2"), f"{row['r2_pct_fujimori']:.1f}%")
+        margin = row["r2_margin"]
+        winner = "Castillo" if margin > 0 else "Fujimori"
+        col3.metric(t("margin_label"), f"{abs(margin):.1f} pp", delta=f"{winner} {t('wins')}", delta_color="off")
+
+        # ── 1st round bar ──
+        st.markdown(t("r1_votes"))
+        _vcol = t("voto_pct_col")
+        _ccol = t("candidato")
+        r1_data = []
+        for abbr, (name, party) in CANDIDATES_R1.items():
+            col = f"r1_pct_{abbr}"
+            if col in row.index and not pd.isna(row[col]):
+                r1_data.append({_ccol: f"{name} ({abbr})", _vcol: row[col], "abbr": abbr})
+        r1_df = pd.DataFrame(r1_data).sort_values(_vcol, ascending=True)
+        bar_colors = [PARTY_COLORS.get(r["abbr"], "#888") for _, r in r1_df.iterrows()]
+        fig_bar = go.Figure(go.Bar(
+            x=r1_df[_vcol], y=r1_df[_ccol],
+            orientation="h",
+            marker_color=bar_colors,
+            text=r1_df[_vcol].map(lambda v: f"{v:.1f}%"),
+            textposition="outside",
+        ))
+        fig_bar.update_layout(
+            height=420, margin=dict(l=0, r=40, t=0, b=0),
+            xaxis_title=t("pct_votos"),
+            showlegend=False,
+            plot_bgcolor="white",
+            xaxis=dict(range=[0, r1_df[_vcol].max() * 1.2]),
         )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+        # ── Swing ──
+        swing_val = row.get("swing", np.nan)
+        if not pd.isna(swing_val):
+            direction = "📈" if swing_val >= 0 else "📉"
+            _swing_detail = t("swing_detail").format(r1=row['r1_pct_PL'], r2=row['r2_pct_castillo'])
+            st.markdown(
+                f"{t('swing_trace')} {direction} `{swing_val:+.1f} pp`  "
+                f"*({_swing_detail})*"
+            )
 
     # ── Census ──
     st.markdown(t("socioeco_context"))
@@ -2052,8 +2227,26 @@ def show_scatter(df, level_key: str = "distrito"):
 
 
 # ─── National summary bar ─────────────────────────────────────────────────────
-def show_national_totals(df):
+def show_national_totals(df, election_year="2021"):
     """One row of headline stats."""
+    if election_year == "2026":
+        total_valid = df["r1_total_valid"].sum()
+        fp_votes = df["r1_FP"].sum()
+        jxp_votes = df["r1_JxP"].sum()
+        rp_votes = df["r1_RP"].sum()
+        fp_pct = fp_votes / total_valid * 100
+        jxp_pct = jxp_votes / total_valid * 100
+        rp_pct = rp_votes / total_valid * 100
+        fp_distr = (df["r1_winner"] == "FP").sum()
+        jxp_distr = (df["r1_winner"] == "JxP").sum()
+        cols = st.columns(5)
+        cols[0].metric(t("fujimori_r1_26"), f"{fp_pct:.2f}%")
+        cols[1].metric(t("sanchez_r1"), f"{jxp_pct:.2f}%")
+        cols[2].metric(t("lopezaliaga_r1"), f"{rp_pct:.2f}%")
+        cols[3].metric(t("distritos_fp"), f"{fp_distr:,}")
+        cols[4].metric(t("votos_validos_r2"), f"{total_valid:,.0f}")
+        return
+
     total_valid = df["r2_total_valid"].sum()
     cast_votes = df["r2_castillo"].sum()
     fuji_votes = df["r2_fujimori"].sum()
@@ -2079,7 +2272,14 @@ _LEVEL_LABEL = {"distrito": "Distrito", "provincia": "Provincia", "departamento"
 
 
 def main():
-    levels, depts = load_data()
+    # Peek at election year from session state (set by radio widget on next render)
+    _ey = st.session_state.get("election_year", None)
+    election_year = "2026" if _ey is not None and "2026" in str(_ey) else "2021"
+
+    if election_year == "2026":
+        levels, depts = load_data_2026()
+    else:
+        levels, depts = load_data()
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
@@ -2091,6 +2291,12 @@ def main():
 
         st.title(t("app_title"))
         st.caption(t("app_subtitle"))
+
+        # Election year selector
+        year_opts = [t("election_2021"), t("election_2026")]
+        st.radio(
+            t("election_year"), year_opts, horizontal=True, key="election_year"
+        )
 
         st.divider()
         st.subheader(t("geo_level"))
@@ -2122,15 +2328,22 @@ def main():
         st.divider()
         st.subheader(t("visualization"))
 
-        vuelta = st.radio(t("round"), [t("second_round"), t("first_round")],
-                          horizontal=True, key="vuelta")
-        is_r2 = vuelta == t("second_round")
+        if election_year == "2026":
+            is_r2 = False
+            st.caption(t("r1_only_note"))
+        else:
+            vuelta = st.radio(t("round"), [t("second_round"), t("first_round")],
+                              horizontal=True, key="vuelta")
+            is_r2 = vuelta == t("second_round")
 
-        mode_opts = (
-            [t("winner"), t("vote_pct"), t("margin"), t("swing")]
-            if is_r2
-            else [t("winner"), t("vote_pct")]
-        )
+        if election_year == "2026":
+            mode_opts = [t("winner"), t("vote_pct")]
+        else:
+            mode_opts = (
+                [t("winner"), t("vote_pct"), t("margin"), t("swing")]
+                if is_r2
+                else [t("winner"), t("vote_pct")]
+            )
         mode = st.selectbox(t("color_mode"), mode_opts, key="mode", help=t("mode_help"))
         # Normalise mode back to a stable internal key regardless of language
         _mode_to_key = {
@@ -2141,7 +2354,16 @@ def main():
 
         cand_abbr = None
         if mode_key == "vote_pct":
-            if is_r2:
+            if election_year == "2026":
+                cand_options_26 = {abbr: f"{name} ({abbr})" for abbr, (name, _) in CANDIDATES_2026_R1.items()}
+                cand_abbr = st.selectbox(
+                    t("candidate"),
+                    options=list(cand_options_26.keys()),
+                    format_func=lambda k: cand_options_26[k],
+                    index=0,
+                    key="cand_2026",
+                )
+            elif is_r2:
                 cand_r2 = st.radio(t("candidate"), ["Castillo", "Fujimori"], horizontal=True)
                 cand_abbr = "castillo" if cand_r2 == "Castillo" else "fujimori"
             else:
@@ -2178,7 +2400,12 @@ def main():
                 "quantile" if bivariate_binning_label == t("quantiles") else "equal_width"
             )
 
-            if is_r2:
+            if election_year == "2026":
+                if mode_key == "vote_pct":
+                    primary_preview = f"{CANDIDATES_2026_R1[cand_abbr][0]} R1 (%)"
+                else:
+                    primary_preview = "% voto del ganador (2026 R1)"
+            elif is_r2:
                 if mode_key == "vote_pct":
                     primary_preview = (
                         "Castillo 2ª v. (%)" if cand_abbr == "castillo"
@@ -2255,7 +2482,14 @@ def main():
 
     if bivariate_on and bivariate_sec_col:
         # Pick primary electoral column based on current mode
-        if is_r2:
+        if election_year == "2026":
+            if mode_key == "vote_pct":
+                bivariate_primary_col = f"r1_pct_{cand_abbr}"
+                bivariate_primary_label = f"{CANDIDATES_2026_R1.get(cand_abbr, (cand_abbr,))[0]} R1 (%)"
+            else:
+                bivariate_primary_col = "r1_winner_pct"
+                bivariate_primary_label = "% voto del ganador (2026 R1)"
+        elif is_r2:
             if mode_key == "vote_pct":
                 bivariate_primary_col = f"r2_pct_{cand_abbr}"
                 bivariate_primary_label = (
@@ -2296,6 +2530,25 @@ def main():
         categorical = False
         color_map = None
         map_title = f"{t('single_layer')}: {overlay_label}"
+
+    elif election_year == "2026":
+        if mode_key == "winner":
+            color_col = "r1_winner"
+            color_map = {abbr: PARTY_COLORS.get(abbr, "#888") for abbr in df["r1_winner"].dropna().unique()}
+            categorical = True
+            color_label = t("winner")
+            colorscale = None
+            range_color = None
+            map_title = f"{t('winner')} — 2026 R1"
+        elif mode_key == "vote_pct":
+            color_col = f"r1_pct_{cand_abbr}"
+            name = CANDIDATES_2026_R1.get(cand_abbr, (cand_abbr,))[0]
+            color_label = f"{name} (%)"
+            colorscale = "Oranges" if cand_abbr == "FP" else "Blues"
+            range_color = [0, plot_df[color_col].quantile(0.99)] if color_col in plot_df.columns else [0, 100]
+            categorical = False
+            color_map = None
+            map_title = f"{t('vote_pct')} — {name} (2026 R1)"
 
     elif is_r2:
         if mode_key == "winner":
@@ -2372,6 +2625,11 @@ def main():
             bivariate_sec_col: ":.2f",
             "_bv_class": False,
         }
+    elif election_year == "2026" and not overlay_col:
+        hover_extra = {
+            "r1_winner": True,
+            "r1_winner_pct": ":.1f",
+        }
     elif is_r2 and not overlay_col:
         hover_extra = {
             "r2_pct_castillo": ":.1f",
@@ -2409,7 +2667,7 @@ def main():
     # ══ MAP TAB ═══════════════════════════════════════════════════════════════
     if active_view == t("tab_map"):
         # Headline stats strip
-        show_national_totals(df)
+        show_national_totals(df, election_year=election_year)
         unit_plural = {"distrito": t("distritos"), "provincia": t("provincias"),
                        "departamento": t("departamentos")}[level_key]
         repr_tag = t("bubbles") if representation == t("bubbles") else t("choropleth")
@@ -2553,7 +2811,7 @@ def main():
             match = df[df["ubigeo"] == selected_ubigeo]
             if not match.empty:
                 st.divider()
-                show_district_detail(match.iloc[0], level_key=level_key)
+                show_district_detail(match.iloc[0], level_key=level_key, election_year=election_year)
         else:
             click_unit = {"distrito": t("distrito_s"), "provincia": t("provincia_s"),
                           "departamento": t("departamento_s")}[level_key]
