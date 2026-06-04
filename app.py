@@ -2921,6 +2921,22 @@ def main():
             color_map = None
             map_title = f"{t('swing')} Castillo (R1→R2)"
 
+        elif mode_key == "bloc_shift":
+            _lang = st.session_state.get("lang", "es")
+            bloc_name = BLOC_LABELS[_lang][bloc_key]
+            color_col = f"_bloc_shift_{bloc_key}"
+            plot_df[color_col] = (
+                plot_df.get(f"r1_2026_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
+                - plot_df.get(f"r1_2021_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
+            )
+            color_label = t("bloc_shift_of").format(bloc=bloc_name)
+            abs_max = float(plot_df[color_col].abs().quantile(0.97))
+            colorscale = [[0.0, "#C1121F"], [0.5, "#f5f5f5"], [1.0, "#2A9D8F"]]
+            range_color = [-abs_max, abs_max]
+            categorical = False
+            color_map = None
+            map_title = f"{bloc_name}: 2026 R1 − 2021 R1 (pp)"
+
     else:  # R1
         if mode_key == "winner":
             color_col = "r1_winner"
