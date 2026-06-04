@@ -77,11 +77,26 @@ CANDIDATES_2026_R1 = {
     "AN":     ("Alfonso López-Chau",   "Ahora Nación"),
     "Obras":  ("Ricardo Belmont",      "Partido Cívico Obras"),
     "PBG":    ("Jorge Nieto",          "Partido del Buen Gobierno"),
+    "PxT":    ("Carlos Álvarez",       "País para Todos"),
+    "PLG":    ("Marisol Pérez Tello",  "Primero la Gente"),
+    "SICREO": ("Carlos Espá",          "SíCreo"),
+    "FE21":   ("Fernando Olivera",     "Frente de la Esperanza 2021"),
+    "Podemos":("José Luna",            "Podemos Perú"),
+    "CoopP":  ("Yonhy Lescano",        "Cooperación Popular"),
     "SP20":   ("George Forsyth",       "Somos Perú"),
-    "AvP":    ("Nelson Agreda",        "Avanza País"),
-    "AEV":    ("Antauro Humala",       "Alianza Electoral Venceremos"),
-    "PL":     ("Digna Calle",          "Perú Libre"),
-    "APRA":   ("Enrique Valderrama",    "Partido Aprista Peruano"),
+    "PPP":    ("Herbert Caller",       "Partido Patriótico del Perú"),
+    "PP1":    ("Mario Vizcarra",       "Perú Primero"),
+    "AEV":    ("Ronald Atencio",       "Alianza Electoral Venceremos"),
+    "PDU":    ("—",                    "Partido Demócrata Unido Perú"),
+    "UCD":    ("Rosario Fernández",    "Un Camino Diferente"),
+    "PL":     ("Vladimir Cerrón",      "Perú Libre"),
+    "Morado": ("Mesías Guevara",       "Partido Morado"),
+    "UN":     ("Roberto Chiabra",      "Unidad Nacional"),
+    "PDV":    ("Álex González",        "Partido Demócrata Verde"),
+    "PID":    ("Wolfang Grozo",        "Integridad Democrática"),
+    "APRA":   ("Enrique Valderrama",   "Partido Aprista Peruano"),
+    "AvP":    ("José Williams",        "Avanza País"),
+    "FyL":    ("Fiorella Molinelli",   "Fuerza y Libertad"),
 }
 
 # ─── Ideological blocs ────────────────────────────────────────────────────────
@@ -113,19 +128,32 @@ BLOCS_2021 = {
 }
 
 BLOCS_2026 = {
-    "JxP":    "left",         # Sánchez — moderate left (ex-Castillo minister, distanced)
-    "AEV":    "left",         # Antauro Humala — nationalist left
-    "PL":     "left",         # Perú Libre — far left
-    "AN":     "center_left",  # López-Chau — social-democratic
-    "Obras":  "center",       # Belmont — populist center ("hugs not bullets")
-    "SP20":   "center",       # Forsyth — center
+    "JxP":    "left",         # Sánchez — moderate left
+    "AEV":    "left",         # Atencio (Venceremos = Voces del Pueblo + Nuevo Perú) — left
+    "PL":     "left",         # Cerrón — far left
+    "AN":     "left",         # López-Chau — left (Ahora Nación)
+    "FE21":   "center_left",  # Olivera — center-left (FIM veteran, anti-fujimorismo)
+    "CoopP":  "center",       # Lescano — center (Cooperación Popular)
+    "Obras":  "center",       # Belmont — populist center
     "PBG":    "center",       # Nieto — technocratic center
-    "PxT":    "center",       # País para Todos
-    "APRA":   "center_right", # Nicanor Boluarte — APRA center-right
+    "PxT":    "center",       # Álvarez — anti-establishment center
+    "PLG":    "center",       # Pérez Tello — center (ex-ministra PPK)
+    "SICREO": "center",       # Espá — center
+    "SP20":   "center",       # Forsyth — center
+    "Morado": "center",       # Guevara — center
+    "PP1":    "center",       # Vizcarra — center
+    "PDV":    "center",       # González — center
+    "PDU":    "center",
+    "UCD":    "center",
+    "Podemos":"center_right", # Luna — university owner, populist right
+    "APRA":   "center_right", # Valderrama — center-right
     "APP":    "center_right", # Acuña — populist right
+    "PPP":    "center_right", # Caller — military
+    "UN":     "center_right", # Chiabra — military center-right
+    "PID":    "center_right", # Grozo — military
     "FP":     "right",        # Fujimori — right
-    "AvP":    "right",        # Avanza País — libertarian right
-    "FyL":    "right",        # Fuerza y Libertad — right
+    "AvP":    "right",        # Williams — military right
+    "FyL":    "right",        # Molinelli — right
     "RP":     "right",        # López Aliaga — hard right
 }
 
@@ -2376,6 +2404,117 @@ def show_scatter(df, level_key: str = "distrito"):
 
 
 # ─── National summary bar ─────────────────────────────────────────────────────
+def show_bloc_sankey():
+    """Sankey diagram: winning bloc in 2021 R1 → winning bloc in 2026 R1.
+
+    Only districts that appear in both datasets (matched by ubigeo) are included.
+    Flow width = number of districts; tooltip shows count and % of matched total.
+    """
+    _lang = st.session_state.get("lang", "es")
+    _bl = BLOC_LABELS[_lang]
+
+    # Load both datasets (cached — no extra cost)
+    levels21, _ = load_data()
+    levels26, _ = load_data_2026()
+    df21 = levels21["distrito"]["df"][["ubigeo", "r1_winner"]].copy()
+    df26 = levels26["distrito"]["df"][["ubigeo", "r1_winner"]].copy()
+
+    # Merge on common ubigeos
+    merged = df21.merge(df26, on="ubigeo", suffixes=("_21", "_26"))
+    merged = merged.dropna(subset=["r1_winner_21", "r1_winner_26"])
+
+    # Map winner → bloc
+    merged["bloc_21"] = merged["r1_winner_21"].map(BLOCS_2021)
+    merged["bloc_26"] = merged["r1_winner_26"].map(BLOCS_2026)
+    merged = merged.dropna(subset=["bloc_21", "bloc_26"])
+
+    n_total = len(merged)
+    if n_total == 0:
+        st.info("No hay distritos con datos en ambas elecciones.")
+        return
+
+    # Build flow matrix
+    flows = (
+        merged.groupby(["bloc_21", "bloc_26"])
+        .size()
+        .reset_index(name="count")
+    )
+
+    # Nodes: left side = 2021 blocs (0-4), right side = 2026 blocs (5-9)
+    node_labels = (
+        [f"{_bl[b]} (2021)" for b in BLOC_ORDER]
+        + [f"{_bl[b]} (2026)" for b in BLOC_ORDER]
+    )
+    bloc_colors = {
+        "left":         "#C1121F",
+        "center_left":  "#E07A5F",
+        "center":       "#A8DADC",
+        "center_right": "#457B9D",
+        "right":        "#1D3557",
+    }
+    node_colors = [bloc_colors[b] for b in BLOC_ORDER] * 2
+
+    bloc_idx = {b: i for i, b in enumerate(BLOC_ORDER)}
+
+    source, target, value, link_colors = [], [], [], []
+    for _, row in flows.iterrows():
+        s = bloc_idx[row["bloc_21"]]          # 0-4
+        t = bloc_idx[row["bloc_26"]] + 5       # 5-9
+        v = int(row["count"])
+        source.append(s)
+        target.append(t)
+        value.append(v)
+        # Use source bloc colour with transparency
+        base = bloc_colors[row["bloc_21"]]
+        r, g, b_ = int(base[1:3], 16), int(base[3:5], 16), int(base[5:7], 16)
+        link_colors.append(f"rgba({r},{g},{b_},0.35)")
+
+    fig = go.Figure(go.Sankey(
+        arrangement="snap",
+        node=dict(
+            pad=18, thickness=22,
+            label=node_labels,
+            color=node_colors,
+            hovertemplate="%{label}<br>%{value} distritos<extra></extra>",
+        ),
+        link=dict(
+            source=source,
+            target=target,
+            value=value,
+            color=link_colors,
+            hovertemplate=(
+                "%{source.label} → %{target.label}<br>"
+                "<b>%{value}</b> distritos "
+                "(%{customdata:.1f}%)<extra></extra>"
+            ),
+            customdata=[v / n_total * 100 for v in value],
+        ),
+    ))
+
+    title_es = f"Flujo de distritos por bloque ganador: 2021 R1 → 2026 R1  (n = {n_total:,} distritos)"
+    title_en = f"District flow by winning bloc: 2021 R1 → 2026 R1  (n = {n_total:,} districts)"
+    fig.update_layout(
+        title=dict(
+            text=title_es if _lang == "es" else title_en,
+            font=dict(size=14), x=0.01, xanchor="left",
+        ),
+        height=420,
+        margin=dict(l=10, r=10, t=50, b=10),
+        font=dict(size=12),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    note_es = (
+        f"Solo se incluyen los {n_total:,} distritos con datos en ambas elecciones "
+        f"(ubigeo coincidente). Los distritos sin par se omiten."
+    )
+    note_en = (
+        f"Only the {n_total:,} districts with data in both elections "
+        f"(matching ubigeo) are included. Unmatched districts are excluded."
+    )
+    st.caption(note_es if _lang == "es" else note_en)
+
+
 def show_national_totals(df, election_year="2021"):
     """One row of headline stats."""
     if election_year == "2026":
@@ -3014,6 +3153,11 @@ def main():
                 t("click_hint").format(unit=click_unit),
                 icon="🖱️",
             )
+
+        # ── Sankey bloc-flow diagram (shown below map in bloc_shift mode) ─────
+        if mode_key == "bloc_shift" and not bivariate_on and level_key == "distrito":
+            st.divider()
+            show_bloc_sankey()
 
     # ══ SCATTER TAB ═══════════════════════════════════════════════════════════
     elif active_view == t("tab_corr"):
