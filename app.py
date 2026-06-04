@@ -70,14 +70,110 @@ CANDIDATES_R1 = {
 }
 
 CANDIDATES_2026_R1 = {
-    "FP":    ("Keiko Fujimori",      "Fuerza Popular"),
-    "JxP":   ("Roberto Sánchez",     "Juntos por el Perú"),
-    "RP":    ("Rafael López Aliaga", "Renovación Popular"),
-    "APP":   ("César Acuña",         "Alianza para el Progreso"),
-    "AN":    ("Nicanor Boluarte",    "Ahora Nación"),
-    "Obras": ("Ricardo Belmont",     "Partido Cívico Obras"),
-    "PBG":   ("George Forsyth",      "Partido del Buen Gobierno"),
+    "FP":     ("Keiko Fujimori",       "Fuerza Popular"),
+    "JxP":    ("Roberto Sánchez",      "Juntos por el Perú"),
+    "RP":     ("Rafael López Aliaga",  "Renovación Popular"),
+    "APP":    ("César Acuña",          "Alianza para el Progreso"),
+    "AN":     ("Alfonso López-Chau",   "Ahora Nación"),
+    "Obras":  ("Ricardo Belmont",      "Partido Cívico Obras"),
+    "PBG":    ("Jorge Nieto",          "Partido del Buen Gobierno"),
+    "SP20":   ("George Forsyth",       "Somos Perú"),
+    "AvP":    ("Nelson Agreda",        "Avanza País"),
+    "AEV":    ("Antauro Humala",       "Alianza Electoral Venceremos"),
+    "PL":     ("Digna Calle",          "Perú Libre"),
+    "APRA":   ("Nicanor Boluarte",     "Partido Aprista Peruano"),
 }
+
+# ─── Ideological blocs ────────────────────────────────────────────────────────
+# Used to compute aggregate left/center/right % per district for both elections.
+# 5 buckets: left · center_left · center · center_right · right
+# Source: academic consensus + Ipsos/El Comercio 2021 perception data +
+#         Intervención y Coyuntura 2026 classification.
+
+BLOCS_2021 = {
+    # abbr: bloc
+    "PL":   "left",         # Castillo — far-left agrarian
+    "JP":   "left",         # Mendoza — democratic socialist
+    "FA":   "left",         # Arana — ecosocialist
+    "PNP":  "center_left",  # Humala — nationalist left (moderated)
+    "RUNA": "center_left",  # Gálvez — Andean indigenist left
+    "AP":   "center",       # Lescano — social-Christian center
+    "PP":   "center",       # Urresti — populist center
+    "PM":   "center",       # Guzmán — liberal center
+    "SP":   "center",       # Salaverry — centrist
+    "DD":   "center",       # Alcántara — populist
+    "UPP":  "center",       # Vega — nationalist
+    "PPS":  "center",       # Santos
+    "PPC":  "center_right", # Beingolea — Christian democratic
+    "VN":   "center_right", # Forsyth — center-right
+    "APP":  "center_right", # Acuña — populist right
+    "FP":   "right",        # Fujimori — right
+    "AvP":  "right",        # De Soto — libertarian right
+    "RP":   "right",        # López Aliaga — hard right
+}
+
+BLOCS_2026 = {
+    "JxP":    "left",         # Sánchez — moderate left (ex-Castillo minister, distanced)
+    "AEV":    "left",         # Antauro Humala — nationalist left
+    "PL":     "left",         # Perú Libre — far left
+    "AN":     "center_left",  # López-Chau — social-democratic
+    "Obras":  "center",       # Belmont — populist center ("hugs not bullets")
+    "SP20":   "center",       # Forsyth — center
+    "PBG":    "center",       # Nieto — technocratic center
+    "PxT":    "center",       # País para Todos
+    "APRA":   "center_right", # Nicanor Boluarte — APRA center-right
+    "APP":    "center_right", # Acuña — populist right
+    "FP":     "right",        # Fujimori — right
+    "AvP":    "right",        # Avanza País — libertarian right
+    "FyL":    "right",        # Fuerza y Libertad — right
+    "RP":     "right",        # López Aliaga — hard right
+}
+
+BLOC_ORDER   = ["left", "center_left", "center", "center_right", "right"]
+BLOC_LABELS  = {
+    "es": {"left": "Izquierda", "center_left": "Centro-izquierda",
+           "center": "Centro", "center_right": "Centro-derecha", "right": "Derecha"},
+    "en": {"left": "Left", "center_left": "Center-left",
+           "center": "Center", "center_right": "Center-right", "right": "Right"},
+}
+
+
+def _add_bloc_columns(df: pd.DataFrame, blocs: dict, prefix: str) -> pd.DataFrame:
+    """Add bloc aggregate columns to a district-level df.
+
+    For each bloc in BLOC_ORDER, sums the raw vote columns for all parties in
+    that bloc and computes the percentage of r1_total_valid (or r2_total_valid).
+
+    prefix: 'r1_2021' | 'r1_2026'  — used to name output columns so both
+    elections can coexist in a merged comparison df.
+
+    Adds columns:
+      {prefix}_left_votes, {prefix}_left_pct,
+      {prefix}_center_left_votes, {prefix}_center_left_pct,
+      ... (same for center, center_right, right)
+      {prefix}_total_valid   (copy of the relevant total_valid col)
+    """
+    # Determine which total_valid column to use
+    if "r1_total_valid" in df.columns:
+        total_col = "r1_total_valid"
+    else:
+        total_col = "r2_total_valid"
+
+    total = pd.to_numeric(df[total_col], errors="coerce").replace(0, np.nan)
+    df[f"{prefix}_total_valid"] = total
+
+    for bloc in BLOC_ORDER:
+        abbrs = [a for a, b in blocs.items() if b == bloc]
+        vote_cols = [f"r1_{a}" for a in abbrs if f"r1_{a}" in df.columns]
+        if vote_cols:
+            votes = df[vote_cols].apply(pd.to_numeric, errors="coerce").sum(axis=1)
+        else:
+            votes = pd.Series(0.0, index=df.index)
+        df[f"{prefix}_{bloc}_votes"] = votes
+        df[f"{prefix}_{bloc}_pct"]   = (votes / total * 100).round(4)
+
+    return df
+
 
 PARTY_COLORS = {
     "PL":   "#E63946",
@@ -98,7 +194,19 @@ PARTY_COLORS = {
     "RUNA": "#588157",
     "SP":   "#ADB5BD",
     "DD":   "#CDB4DB",
-    "JxP":  "#E63946",   # Roberto Sánchez — red
+    "JxP":    "#E63946",   # Roberto Sánchez — red
+    "Obras":  "#FF9F1C",   # Belmont — orange
+    "PBG":    "#2EC4B6",   # Nieto — teal
+    "SP20":   "#ADB5BD",   # Forsyth — grey
+    "AEV":    "#6D2B2B",   # Antauro — dark red
+    "AN":     "#457B9D",   # López-Chau — blue-grey
+    "APRA":   "#C1121F",   # APRA — red
+    # Ideological bloc colours (for bloc-comparison map)
+    "bloc_left":         "#C1121F",
+    "bloc_center_left":  "#F4A261",
+    "bloc_center":       "#A8DADC",
+    "bloc_center_right": "#457B9D",
+    "bloc_right":        "#1D3557",
 }
 
 CENSUS_VARS = {
@@ -194,6 +302,21 @@ STRINGS = {
     "vote_pct":             {"es": "Porcentaje de voto",                 "en": "Vote share"},
     "margin":               {"es": "Margen",                             "en": "Margin"},
     "swing":                {"es": "Swing (R1→R2)",                      "en": "Swing (R1→R2)"},
+    "bloc_shift":           {"es": "Cambio de bloque (2021→2026)",        "en": "Bloc shift (2021→2026)"},
+    "bloc_label":           {"es": "Bloque",                             "en": "Bloc"},
+    "bloc_left":            {"es": "Izquierda",                          "en": "Left"},
+    "bloc_center_left":     {"es": "Centro-izquierda",                   "en": "Center-left"},
+    "bloc_center":          {"es": "Centro",                             "en": "Center"},
+    "bloc_center_right":    {"es": "Centro-derecha",                     "en": "Center-right"},
+    "bloc_right":           {"es": "Derecha",                            "en": "Right"},
+    "bloc_shift_of":        {"es": "Cambio en {bloc} (pp)",              "en": "{bloc} shift (pp)"},
+    "bloc_select":          {"es": "Bloque a visualizar",                "en": "Bloc to display"},
+    "bloc_note":            {
+        "es": ("Muestra cuántos pp ganó o perdió el bloque entre 2021 R1 y 2026 R1. "
+               "Verde = creció, rojo = redujo."),
+        "en": ("Shows how many pp the bloc gained or lost between 2021 R1 and 2026 R1. "
+               "Green = grew, red = shrank."),
+    },
     "mode_help":            {
         "es": ("**Ganador**: qué candidato obtuvo más votos.\n\n"
                "**Porcentaje de voto**: % de votos válidos para un candidato elegido.\n\n"
@@ -971,6 +1094,9 @@ def load_data():
         + df["DEPARTAMENTO"].str.title()
     )
 
+    # Ideological bloc aggregate columns (2021 R1)
+    df = _add_bloc_columns(df, BLOCS_2021, "r1_2021")
+
     # Departments list for filter
     depts = sorted(df["DEPARTAMENTO"].dropna().unique().tolist())
 
@@ -1065,6 +1191,9 @@ def load_data_2026():
         df["pct_superior"] = sup
         df["pct_hasta_secundaria"] = 100.0 - sup
 
+    # Ideological bloc aggregate columns (2026 R1)
+    df = _add_bloc_columns(df, BLOCS_2026, "r1_2026")
+
     # Departments list for filter
     depts = sorted(df["DEPARTAMENTO"].dropna().unique().tolist())
 
@@ -1140,6 +1269,13 @@ _SUM_COLS_2026 = (
        "cvr_events", "population_1972_thousands"]
 )
 
+# Bloc raw vote columns (both elections) — summed additively at higher levels
+_SUM_COLS_BLOCS = (
+    [f"r1_2021_{b}_votes" for b in BLOC_ORDER]
+    + [f"r1_2026_{b}_votes" for b in BLOC_ORDER]
+    + ["r1_2021_total_valid", "r1_2026_total_valid"]
+)
+
 
 def _pop_weighted_mean(values: pd.Series, weights: pd.Series) -> float:
     """Population-weighted mean that ignores NaN values (without biasing weights).
@@ -1187,7 +1323,9 @@ def aggregate_to_level(df: pd.DataFrame, level: str) -> pd.DataFrame:
             row["DISTRITO"]     = g["DEPARTAMENTO"].iloc[0]
 
         # ── Additive columns ──────────────────────────────────────────────────
-        for col in list(_SUM_COLS) + list(_SUM_COLS_LR) + list(_SUM_COLS_2026):
+        all_sum_cols = (list(_SUM_COLS) + list(_SUM_COLS_LR)
+                        + list(_SUM_COLS_2026) + list(_SUM_COLS_BLOCS))
+        for col in all_sum_cols:
             if col in g.columns:
                 row[col] = float(g[col].fillna(0).sum())
 
@@ -1263,6 +1401,17 @@ def aggregate_to_level(df: pd.DataFrame, level: str) -> pd.DataFrame:
     # Swing
     if "r2_pct_castillo" in out.columns and "r1_pct_PL" in out.columns:
         out["swing"] = out["r2_pct_castillo"] - out["r1_pct_PL"]
+
+    # ── Bloc percentages (recomputed from summed vote counts) ─────────────────
+    for prefix, total_col in [("r1_2021", "r1_2021_total_valid"),
+                               ("r1_2026", "r1_2026_total_valid")]:
+        if total_col in out.columns:
+            denom_b = out[total_col].replace(0, np.nan)
+            for b in BLOC_ORDER:
+                vcol = f"{prefix}_{b}_votes"
+                pcol = f"{prefix}_{b}_pct"
+                if vcol in out.columns:
+                    out[pcol] = (out[vcol] / denom_b * 100).fillna(0)
 
     # ── Hover label ──────────────────────────────────────────────────────────
     if level == "provincia":
@@ -2337,20 +2486,35 @@ def main():
             is_r2 = vuelta == t("second_round")
 
         if election_year == "2026":
-            mode_opts = [t("winner"), t("vote_pct")]
+            mode_opts = [t("winner"), t("vote_pct"), t("bloc_shift")]
         else:
             mode_opts = (
                 [t("winner"), t("vote_pct"), t("margin"), t("swing")]
                 if is_r2
-                else [t("winner"), t("vote_pct")]
+                else [t("winner"), t("vote_pct"), t("bloc_shift")]
             )
         mode = st.selectbox(t("color_mode"), mode_opts, key="mode", help=t("mode_help"))
         # Normalise mode back to a stable internal key regardless of language
         _mode_to_key = {
             t("winner"): "winner", t("vote_pct"): "vote_pct",
             t("margin"): "margin", t("swing"): "swing",
+            t("bloc_shift"): "bloc_shift",
         }
         mode_key = _mode_to_key.get(mode, mode)
+
+        # Bloc selector (shown only in bloc_shift mode)
+        bloc_key = "left"
+        if mode_key == "bloc_shift":
+            _lang = st.session_state.get("lang", "es")
+            _bloc_labels = BLOC_LABELS[_lang]
+            bloc_display = st.selectbox(
+                t("bloc_select"),
+                options=BLOC_ORDER,
+                format_func=lambda b: _bloc_labels[b],
+                key="bloc_select",
+            )
+            bloc_key = bloc_display
+            st.caption(t("bloc_note"))
 
         cand_abbr = None
         if mode_key == "vote_pct":
@@ -2549,6 +2713,21 @@ def main():
             categorical = False
             color_map = None
             map_title = f"{t('vote_pct')} — {name} (2026 R1)"
+        elif mode_key == "bloc_shift":
+            _lang = st.session_state.get("lang", "es")
+            bloc_name = BLOC_LABELS[_lang][bloc_key]
+            color_col = f"_bloc_shift_{bloc_key}"
+            plot_df[color_col] = (
+                plot_df.get(f"r1_2026_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
+                - plot_df.get(f"r1_2021_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
+            )
+            color_label = t("bloc_shift_of").format(bloc=bloc_name)
+            abs_max = float(plot_df[color_col].abs().quantile(0.97))
+            colorscale = [[0.0, "#C1121F"], [0.5, "#f5f5f5"], [1.0, "#2A9D8F"]]
+            range_color = [-abs_max, abs_max]
+            categorical = False
+            color_map = None
+            map_title = f"{bloc_name}: 2026 R1 − 2021 R1 (pp)"
 
     elif is_r2:
         if mode_key == "winner":
@@ -2617,6 +2796,22 @@ def main():
             categorical = False
             color_map = None
             map_title = f"{t('vote_pct')} — {name} ({t('first_round')})"
+
+        elif mode_key == "bloc_shift":
+            _lang = st.session_state.get("lang", "es")
+            bloc_name = BLOC_LABELS[_lang][bloc_key]
+            color_col = f"_bloc_shift_{bloc_key}"
+            plot_df[color_col] = (
+                plot_df.get(f"r1_2026_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
+                - plot_df.get(f"r1_2021_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
+            )
+            color_label = t("bloc_shift_of").format(bloc=bloc_name)
+            abs_max = float(plot_df[color_col].abs().quantile(0.97))
+            colorscale = [[0.0, "#C1121F"], [0.5, "#f5f5f5"], [1.0, "#2A9D8F"]]
+            range_color = [-abs_max, abs_max]
+            categorical = False
+            color_map = None
+            map_title = f"{bloc_name}: 2026 R1 − 2021 R1 (pp)"
 
     # Hover extras
     if bivariate_on and bivariate_sec_col:
