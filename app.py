@@ -81,7 +81,7 @@ CANDIDATES_2026_R1 = {
     "AvP":    ("Nelson Agreda",        "Avanza País"),
     "AEV":    ("Antauro Humala",       "Alianza Electoral Venceremos"),
     "PL":     ("Digna Calle",          "Perú Libre"),
-    "APRA":   ("Nicanor Boluarte",     "Partido Aprista Peruano"),
+    "APRA":   ("Enrique Valderrama",    "Partido Aprista Peruano"),
 }
 
 # ─── Ideological blocs ────────────────────────────────────────────────────────
