@@ -2509,7 +2509,7 @@ def show_bloc_sankey():
         ),
         height=440,
         margin=dict(l=10, r=10, t=55, b=10),
-        font=dict(size=12),
+        font=dict(size=13, color="black"),
     )
     st.plotly_chart(fig, use_container_width=True)
 
