@@ -398,6 +398,45 @@ STRINGS = {
     "tab_map":              {"es": "🗺️ Mapa",                           "en": "🗺️ Map"},
     "tab_corr":             {"es": "📈 Correlación",                    "en": "📈 Correlation"},
     "tab_data":             {"es": "📋 Datos",                          "en": "📋 Data"},
+    "tab_realign":          {"es": "🔄 Realineamiento",                 "en": "🔄 Realignment"},
+    # Realignment tab
+    "realign_title":        {"es": "### Realineamiento electoral 2021 → 2026 (1ª vuelta)",
+                             "en": "### Electoral realignment 2021 → 2026 (1st round)"},
+    "realign_intro":        {
+        "es": ("Compara el voto por **bloque ideológico** (izquierda / centro / derecha) "
+               "entre la 1ª vuelta de 2021 y la de 2026, distrito por distrito. "
+               "El mapa muestra el **cambio en pp** del bloque elegido; los diagramas de "
+               "flujo (Sankey) muestran cómo se mueve la población entre bloques."),
+        "en": ("Compares the vote by **ideological bloc** (left / center / right) between "
+               "the 2021 and 2026 first rounds, district by district. The map shows the "
+               "**change in pp** for the selected bloc; the Sankey diagrams show how "
+               "population moves between blocs."),
+    },
+    "realign_bloc_sel":     {"es": "Bloque a mapear (cambio 2021→2026)",
+                             "en": "Bloc to map (2021→2026 change)"},
+    "realign_map_title":    {"es": "Cambio en {bloc} (pp): 2026 R1 − 2021 R1",
+                             "en": "{bloc} change (pp): 2026 R1 − 2021 R1"},
+    "realign_map_note":     {
+        "es": ("Verde = el bloque creció; rojo = se redujo. "
+               "Solo distritos con datos en ambas elecciones (~1,874)."),
+        "en": ("Green = the bloc grew; red = it shrank. "
+               "Districts with data in both elections only (~1,874)."),
+    },
+    "realign_corr_title":   {"es": "#### ¿Qué predice el giro a la derecha?",
+                             "en": "#### What predicts the rightward swing?"},
+    "realign_corr_intro":   {
+        "es": ("Correlación entre características del distrito y el **cambio del bloque "
+               "elegido** (pp, 2021→2026). Una correlación alta describe *lugares*, no "
+               "votantes individuales (falacia ecológica) y no implica causalidad."),
+        "en": ("Correlation between district characteristics and the **change in the "
+               "selected bloc** (pp, 2021→2026). A high correlation describes *places*, "
+               "not individual voters (ecological fallacy), and does not imply causation."),
+    },
+    "realign_outcome":      {"es": "Variable a explicar (cambio de bloque)",
+                             "en": "Outcome (bloc change)"},
+    "delta_left":           {"es": "Δ Izquierda (pp)",   "en": "Δ Left (pp)"},
+    "delta_center":         {"es": "Δ Centro (pp)",      "en": "Δ Center (pp)"},
+    "delta_right":          {"es": "Δ Derecha (pp)",     "en": "Δ Right (pp)"},
     # Map tab
     "back_btn":             {"es": "← Volver",                          "en": "← Back"},
     "back_help":            {"es": "Limpiar selección y volver a la vista general",
@@ -1254,6 +1293,67 @@ def load_data_2026():
         "provincia":    {"geojson": geojson_prov, "df": df_prov},
         "departamento": {"geojson": geojson_dep,  "df": df_dep},
     }, depts
+
+
+@st.cache_data
+def load_realignment_data():
+    """Merge 2021 R1 + 2026 R1 at distrito level for realignment analysis.
+
+    Inner-joins the two single-election dataframes on INEI ubigeo (both already
+    RENIEC→INEI remapped + deduped by their own loaders), collapses the 5-bucket
+    bloc shares to 3 (left / center / right) for each year, and computes the
+    2021→2026 delta per bloc. Carries total_pop, place names, and all census /
+    conflict / land-reform covariates from the 2021 frame (time-invariant
+    context).
+
+    Returns (merged_df, distrito_geojson).
+    """
+    levels21, _ = load_data()
+    levels26, _ = load_data_2026()
+    d21 = levels21["distrito"]["df"]
+    d26 = levels26["distrito"]["df"]
+    geojson = levels21["distrito"]["geojson"]
+
+    def _bloc3(df, prefix):
+        """Collapse 5 bloc-pct cols → (left, center, right) Series."""
+        g = lambda c: pd.to_numeric(df[c], errors="coerce").fillna(0.0) \
+            if c in df.columns else pd.Series(0.0, index=df.index)
+        left = g(f"{prefix}_left_pct")
+        center = (g(f"{prefix}_center_left_pct")
+                  + g(f"{prefix}_center_pct")
+                  + g(f"{prefix}_center_right_pct"))
+        right = g(f"{prefix}_right_pct")
+        return left, center, right
+
+    l21, c21, r21 = _bloc3(d21, "r1_2021")
+    l26, c26, r26 = _bloc3(d26, "r1_2026")
+
+    # Covariates to carry (those exposed in the scatter X dropdown that exist)
+    covar_cols = [c for c in all_context_labels().keys() if c in d21.columns]
+
+    base_cols = ["ubigeo", "DEPARTAMENTO", "PROVINCIA", "DISTRITO", "_label",
+                 "total_pop", "r1_winner"] + covar_cols
+    base = d21[[c for c in base_cols if c in d21.columns]].copy()
+    base = base.rename(columns={"r1_winner": "r1_winner_21"})
+    base["left_21"]   = l21.values
+    base["center_21"] = c21.values
+    base["right_21"]  = r21.values
+
+    m26 = pd.DataFrame({
+        "ubigeo":       d26["ubigeo"].values,
+        "r1_winner_26": d26["r1_winner"].values,
+        "left_26":      l26.values,
+        "center_26":    c26.values,
+        "right_26":     r26.values,
+    })
+
+    merged = base.merge(m26, on="ubigeo", how="inner")
+    merged["delta_left"]   = merged["left_26"]   - merged["left_21"]
+    merged["delta_center"] = merged["center_26"] - merged["center_21"]
+    merged["delta_right"]  = merged["right_26"]  - merged["right_21"]
+    merged["total_pop"] = pd.to_numeric(merged["total_pop"], errors="coerce")
+
+    return merged, geojson
 
 
 # ─── Aggregation to higher administrative levels ──────────────────────────────
@@ -2566,6 +2666,153 @@ def show_bloc_sankey():
     st.caption(note2_es if _lang == "es" else note2_en)
 
 
+_REALIGN_3LABELS = {
+    "es": {"left": "Izquierda", "center": "Centro", "right": "Derecha"},
+    "en": {"left": "Left",      "center": "Center",  "right": "Right"},
+}
+
+
+def show_realignment():
+    """Realignment tab: bloc-delta choropleth + Sankeys + correlates scatter.
+
+    Spans BOTH elections (2021 R1 and 2026 R1). Uses load_realignment_data(),
+    which inner-joins the two on INEI ubigeo and carries 3-bloc deltas plus
+    time-invariant covariates. Distrito level only (v1).
+    """
+    _lang = st.session_state.get("lang", "es")
+    merged, geojson = load_realignment_data()
+    _3l = _REALIGN_3LABELS[_lang]
+
+    st.markdown(t("realign_title"))
+    st.caption(t("realign_intro"))
+
+    # ── Bloc selector (default right) ─────────────────────────────────────────
+    bloc_key = st.selectbox(
+        t("realign_bloc_sel"),
+        options=["right", "center", "left"],
+        format_func=lambda b: _3l[b],
+        key="realign_bloc",
+    )
+    bloc_name = _3l[bloc_key]
+    delta_col = f"delta_{bloc_key}"
+
+    # ── Δ choropleth ──────────────────────────────────────────────────────────
+    delta_vals = pd.to_numeric(merged[delta_col], errors="coerce")
+    abs_max = float(delta_vals.abs().quantile(0.97))
+    if not np.isfinite(abs_max) or abs_max == 0:
+        abs_max = 1.0
+    fig = build_map(
+        geojson, merged, delta_col,
+        color_label=t("realign_map_title").format(bloc=bloc_name),
+        colorscale=[[0.0, "#C1121F"], [0.5, "#f5f5f5"], [1.0, "#2A9D8F"]],
+        range_color=[-abs_max, abs_max],
+        categorical=False, color_map=None,
+        center={"lat": -9.19, "lon": -75.0}, zoom=4.2,
+        hover_extra={delta_col: ":.1f"},
+    )
+    fig.update_layout(
+        title=dict(text=t("realign_map_title").format(bloc=bloc_name),
+                   font=dict(size=14), x=0.01, xanchor="left"),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    st.caption(t("realign_map_note"))
+
+    st.divider()
+    # ── Sankeys (both, distrito level) ────────────────────────────────────────
+    show_bloc_sankey()
+
+    st.divider()
+    # ── Correlates of the swing ───────────────────────────────────────────────
+    show_realignment_scatter(merged)
+
+
+def show_realignment_scatter(merged: pd.DataFrame):
+    """Scatter + correlation of a district covariate vs the bloc-share delta.
+
+    Reuses the Frisch-Waugh-Lovell partial-correlation approach from
+    show_scatter() so the user can hold covariates constant.
+    """
+    from scipy import stats as _sst
+    _lang = st.session_state.get("lang", "es")
+
+    st.markdown(t("realign_corr_title"))
+    st.caption(t("realign_corr_intro"))
+
+    all_x = {k: v for k, v in all_context_labels().items() if k in merged.columns}
+    if not all_x:
+        return
+    out_opts = {"delta_right": t("delta_right"),
+                "delta_center": t("delta_center"),
+                "delta_left": t("delta_left")}
+
+    c1, c2 = st.columns(2)
+    y_key = c1.selectbox(t("realign_outcome"), list(out_opts.keys()),
+                         format_func=lambda k: out_opts[k], key="realign_y")
+    x_key = c2.selectbox(t("x_var_label"), list(all_x.keys()),
+                         format_func=lambda k: all_x[k], key="realign_x")
+
+    control_opts = {k: v for k, v in all_x.items() if k != x_key}
+    control_keys = st.multiselect(
+        t("control_label"),
+        options=list(control_opts.keys()),
+        format_func=lambda k: control_opts[k],
+        default=[], key="realign_controls", help=t("control_help"),
+    )
+
+    cols = [x_key, y_key, "_label"] + control_keys
+    cols = list(dict.fromkeys(cols))
+    d = merged[cols].copy()
+    for c in [x_key, y_key] + control_keys:
+        d[c] = pd.to_numeric(d[c], errors="coerce")
+    d = d.dropna(subset=[x_key, y_key] + control_keys)
+    if len(d) < 5:
+        st.info(t("no_data"))
+        return
+
+    x_label, y_label = all_x[x_key], out_opts[y_key]
+
+    # ── Scatter + OLS ─────────────────────────────────────────────────────────
+    fig = px.scatter(d, x=x_key, y=y_key, hover_name="_label", opacity=0.6)
+    fig.update_traces(marker=dict(size=6, color="#5698b9"))
+    slope, intercept = np.polyfit(d[x_key], d[y_key], 1)
+    xs = np.array([d[x_key].min(), d[x_key].max()])
+    fig.add_trace(go.Scatter(x=xs, y=slope * xs + intercept, mode="lines",
+                             line=dict(color="#333", width=2), hoverinfo="skip"))
+    fig.add_hline(y=0, line=dict(color="#bbb", width=1, dash="dot"))
+    fig.update_layout(height=480, plot_bgcolor="white", showlegend=False,
+                      xaxis=dict(title=x_label, gridcolor="#eee"),
+                      yaxis=dict(title=y_label, gridcolor="#eee"))
+    st.plotly_chart(fig, use_container_width=True)
+
+    pr = d[x_key].corr(d[y_key])
+    sr, _ = _sst.spearmanr(d[x_key], d[y_key])
+    m1, m2, m3 = st.columns(3)
+    m1.metric(t("pearson_label"), f"{pr:+.3f}")
+    m2.metric(t("spearman_label"), f"{sr:+.3f}")
+    m3.metric(t("n_used_label"), f"{len(d):,}")
+
+    # ── Partial correlation (FWL) when controls chosen ────────────────────────
+    if control_keys and len(d) > len(control_keys) + 2:
+        try:
+            import statsmodels.api as sm
+        except ImportError:
+            st.error(t("partial_reg_missing"))
+            return
+        Z = sm.add_constant(d[control_keys].astype(float).values, has_constant="add")
+        ry = sm.OLS(d[y_key].astype(float).values, Z).fit().resid
+        rx = sm.OLS(d[x_key].astype(float).values, Z).fit().resid
+        partial_r = float(np.corrcoef(rx, ry)[0, 1])
+        ctrl_labels = ", ".join(all_x[c] for c in control_keys)
+        st.markdown(
+            t("interpret_partial_tmpl").format(
+                controls=ctrl_labels, x=x_label, y=y_label,
+                strength=f"r = {partial_r:+.2f}",
+                r=partial_r, beta=float(np.polyfit(rx, ry, 1)[0]),
+                p=float(_sst.pearsonr(rx, ry)[1]),
+            )
+        )
+
+
 def show_national_totals(df, election_year="2021"):
     """One row of headline stats."""
     if election_year == "2026":
@@ -2615,6 +2862,11 @@ def main():
     _ey = st.session_state.get("election_year", None)
     election_year = "2026" if _ey is not None and "2026" in str(_ey) else "2021"
 
+    # Peek at active tab from session state. The Realignment tab spans both
+    # elections, so several single-election sidebar controls are hidden there.
+    _av = st.session_state.get("active_view", "")
+    on_realign = _av in (STRINGS["tab_realign"]["es"], STRINGS["tab_realign"]["en"])
+
     if election_year == "2026":
         levels, depts = load_data_2026()
     else:
@@ -2631,11 +2883,12 @@ def main():
         st.title(t("app_title"))
         st.caption(t("app_subtitle"))
 
-        # Election year selector
-        year_opts = [t("election_2021"), t("election_2026")]
-        st.radio(
-            t("election_year"), year_opts, horizontal=True, key="election_year"
-        )
+        # Election year selector — hidden on the Realignment tab (spans both years)
+        if not on_realign:
+            year_opts = [t("election_2021"), t("election_2026")]
+            st.radio(
+                t("election_year"), year_opts, horizontal=True, key="election_year"
+            )
 
         st.divider()
         st.subheader(t("geo_level"))
@@ -2676,33 +2929,18 @@ def main():
             is_r2 = vuelta == t("second_round")
 
         if election_year == "2026":
-            mode_opts = [t("winner"), t("vote_pct"), t("bloc_shift")]
+            mode_opts = [t("winner"), t("vote_pct")]
         elif is_r2:
-            mode_opts = [t("winner"), t("vote_pct"), t("margin"), t("swing"), t("bloc_shift")]
+            mode_opts = [t("winner"), t("vote_pct"), t("margin"), t("swing")]
         else:
-            mode_opts = [t("winner"), t("vote_pct"), t("bloc_shift")]
+            mode_opts = [t("winner"), t("vote_pct")]
         mode = st.selectbox(t("color_mode"), mode_opts, key="mode", help=t("mode_help"))
         # Normalise mode back to a stable internal key regardless of language
         _mode_to_key = {
             t("winner"): "winner", t("vote_pct"): "vote_pct",
             t("margin"): "margin", t("swing"): "swing",
-            t("bloc_shift"): "bloc_shift",
         }
         mode_key = _mode_to_key.get(mode, mode)
-
-        # Bloc selector (shown only in bloc_shift mode)
-        bloc_key = "left"
-        if mode_key == "bloc_shift":
-            _lang = st.session_state.get("lang", "es")
-            _bloc_labels = BLOC_LABELS[_lang]
-            bloc_display = st.selectbox(
-                t("bloc_select"),
-                options=BLOC_ORDER,
-                format_func=lambda b: _bloc_labels[b],
-                key="bloc_select",
-            )
-            bloc_key = bloc_display
-            st.caption(t("bloc_note"))
 
         cand_abbr = None
         if mode_key == "vote_pct":
@@ -2901,21 +3139,6 @@ def main():
             categorical = False
             color_map = None
             map_title = f"{t('vote_pct')} — {name} (2026 R1)"
-        elif mode_key == "bloc_shift":
-            _lang = st.session_state.get("lang", "es")
-            bloc_name = BLOC_LABELS[_lang][bloc_key]
-            color_col = f"_bloc_shift_{bloc_key}"
-            plot_df[color_col] = (
-                plot_df.get(f"r1_2026_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
-                - plot_df.get(f"r1_2021_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
-            )
-            color_label = t("bloc_shift_of").format(bloc=bloc_name)
-            abs_max = float(plot_df[color_col].abs().quantile(0.97))
-            colorscale = [[0.0, "#C1121F"], [0.5, "#f5f5f5"], [1.0, "#2A9D8F"]]
-            range_color = [-abs_max, abs_max]
-            categorical = False
-            color_map = None
-            map_title = f"{bloc_name}: 2026 R1 − 2021 R1 (pp)"
 
     elif is_r2:
         if mode_key == "winner":
@@ -2965,22 +3188,6 @@ def main():
             color_map = None
             map_title = f"{t('swing')} Castillo (R1→R2)"
 
-        elif mode_key == "bloc_shift":
-            _lang = st.session_state.get("lang", "es")
-            bloc_name = BLOC_LABELS[_lang][bloc_key]
-            color_col = f"_bloc_shift_{bloc_key}"
-            plot_df[color_col] = (
-                plot_df.get(f"r1_2026_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
-                - plot_df.get(f"r1_2021_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
-            )
-            color_label = t("bloc_shift_of").format(bloc=bloc_name)
-            abs_max = float(plot_df[color_col].abs().quantile(0.97))
-            colorscale = [[0.0, "#C1121F"], [0.5, "#f5f5f5"], [1.0, "#2A9D8F"]]
-            range_color = [-abs_max, abs_max]
-            categorical = False
-            color_map = None
-            map_title = f"{bloc_name}: 2026 R1 − 2021 R1 (pp)"
-
     else:  # R1
         if mode_key == "winner":
             color_col = "r1_winner"
@@ -3000,22 +3207,6 @@ def main():
             categorical = False
             color_map = None
             map_title = f"{t('vote_pct')} — {name} ({t('first_round')})"
-
-        elif mode_key == "bloc_shift":
-            _lang = st.session_state.get("lang", "es")
-            bloc_name = BLOC_LABELS[_lang][bloc_key]
-            color_col = f"_bloc_shift_{bloc_key}"
-            plot_df[color_col] = (
-                plot_df.get(f"r1_2026_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
-                - plot_df.get(f"r1_2021_{bloc_key}_pct", pd.Series(np.nan, index=plot_df.index))
-            )
-            color_label = t("bloc_shift_of").format(bloc=bloc_name)
-            abs_max = float(plot_df[color_col].abs().quantile(0.97))
-            colorscale = [[0.0, "#C1121F"], [0.5, "#f5f5f5"], [1.0, "#2A9D8F"]]
-            range_color = [-abs_max, abs_max]
-            categorical = False
-            color_map = None
-            map_title = f"{bloc_name}: 2026 R1 − 2021 R1 (pp)"
 
     # Hover extras
     if bivariate_on and bivariate_sec_col:
@@ -3049,7 +3240,7 @@ def main():
     # in the Datos search or toggling a checkbox there snaps the user back to
     # Mapa. Work around it by using a keyed radio as the navigator: the key
     # binds it to session_state, so the selection survives reruns.
-    TAB_LABELS = [t("tab_map"), t("tab_corr"), t("tab_data")]
+    TAB_LABELS = [t("tab_map"), t("tab_corr"), t("tab_data"), t("tab_realign")]
     active_view = st.radio(
         "Vista",
         TAB_LABELS,
@@ -3219,11 +3410,6 @@ def main():
                 icon="🖱️",
             )
 
-        # ── Sankey bloc-flow diagram (shown below map in bloc_shift mode) ─────
-        if mode_key == "bloc_shift" and not bivariate_on and level_key == "distrito":
-            st.divider()
-            show_bloc_sankey()
-
     # ══ SCATTER TAB ═══════════════════════════════════════════════════════════
     elif active_view == t("tab_corr"):
         show_scatter(df, level_key=level_key)
@@ -3285,6 +3471,10 @@ def main():
         csv = table_df.to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Descargar CSV", csv,
                            file_name=f"peru2021_{level_key}s.csv", mime="text/csv")
+
+    # ══ REALIGNMENT TAB ════════════════════════════════════════════════════════
+    elif active_view == t("tab_realign"):
+        show_realignment()
 
 
 if __name__ == "__main__":
