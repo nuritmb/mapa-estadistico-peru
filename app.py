@@ -2427,9 +2427,18 @@ def show_bloc_sankey():
     merged = df21.merge(df26, on="ubigeo", suffixes=("_21", "_26"))
     merged = merged.dropna(subset=["r1_winner_21", "r1_winner_26"])
 
-    # Map winner → bloc
-    merged["bloc_21"] = merged["r1_winner_21"].map(BLOCS_2021)
-    merged["bloc_26"] = merged["r1_winner_26"].map(BLOCS_2026)
+    # Map winner → 5-bucket bloc, then collapse to 3
+    _to3 = {"left": "left", "center_left": "center",
+             "center": "center", "center_right": "center", "right": "right"}
+    _3order = ["left", "center", "right"]
+    _3labels = {
+        "es": {"left": "Izquierda", "center": "Centro", "right": "Derecha"},
+        "en": {"left": "Left",      "center": "Center",  "right": "Right"},
+    }
+    _3colors = {"left": "#C1121F", "center": "#A8DADC", "right": "#1D3557"}
+
+    merged["bloc_21"] = merged["r1_winner_21"].map(BLOCS_2021).map(_to3)
+    merged["bloc_26"] = merged["r1_winner_26"].map(BLOCS_2026).map(_to3)
     merged = merged.dropna(subset=["bloc_21", "bloc_26"])
 
     merged["total_pop"] = pd.to_numeric(merged["total_pop"], errors="coerce").fillna(0)
@@ -2446,33 +2455,26 @@ def show_bloc_sankey():
         .reset_index(name="pop")
     )
 
-    # Nodes: left side = 2021 blocs (0-4), right side = 2026 blocs (5-9)
+    _lbl3 = _3labels[_lang]
     node_labels = (
-        [f"{_bl[b]} (2021)" for b in BLOC_ORDER]
-        + [f"{_bl[b]} (2026)" for b in BLOC_ORDER]
+        [f"{_lbl3[b]} (2021)" for b in _3order]
+        + [f"{_lbl3[b]} (2026)" for b in _3order]
     )
-    bloc_colors = {
-        "left":         "#C1121F",
-        "center_left":  "#E07A5F",
-        "center":       "#A8DADC",
-        "center_right": "#457B9D",
-        "right":        "#1D3557",
-    }
-    node_colors = [bloc_colors[b] for b in BLOC_ORDER] * 2
+    node_colors = [_3colors[b] for b in _3order] * 2
 
-    bloc_idx = {b: i for i, b in enumerate(BLOC_ORDER)}
+    bloc_idx = {b: i for i, b in enumerate(_3order)}
 
     source, target, value, link_colors = [], [], [], []
     for _, row in flows.iterrows():
         s = bloc_idx[row["bloc_21"]]
-        tgt = bloc_idx[row["bloc_26"]] + 5
+        tgt = bloc_idx[row["bloc_26"]] + 3
         v = int(row["pop"])
         if v == 0:
             continue
         source.append(s)
         target.append(tgt)
         value.append(v)
-        base = bloc_colors[row["bloc_21"]]
+        base = _3colors[row["bloc_21"]]
         r, g, b_ = int(base[1:3], 16), int(base[3:5], 16), int(base[5:7], 16)
         link_colors.append(f"rgba({r},{g},{b_},0.35)")
 
