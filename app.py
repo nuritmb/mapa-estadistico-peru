@@ -1165,13 +1165,27 @@ def load_data_2026():
     if bad_pop.any():
         census.loc[bad_pop, "total_pop"] = np.nan
 
-    # Election 2026 R1 (ubigeo = INEI) — domestic only
+    # Build RENIEC → INEI crosswalk (same as load_data())
+    reniec_to_inei = census.set_index("reniec")["ubigeo"].to_dict()
+
+    # Election 2026 R1 — domestic only.
+    # ONPE uses RENIEC ubigeo codes (same as 2021), so we remap to INEI
+    # so that ubigeos are consistent with the GeoJSON and census.
     elec = pd.read_csv(
         os.path.join(DATA_DIR, "election_2026_r1_distrito.csv"),
         dtype={"ubigeo": str},
     )
     elec = elec[elec["ubigeo"].str[:2].astype(int) < 90].copy()
     elec["ubigeo"] = elec["ubigeo"].str.zfill(6)
+    elec["ubigeo_reniec"] = elec["ubigeo"]   # keep original for reference
+    elec["ubigeo"] = elec["ubigeo"].map(reniec_to_inei).fillna(elec["ubigeo"])
+
+    # Deduplicate: if two RENIEC codes mapped to the same INEI ubigeo,
+    # keep the row with more valid votes (larger mesas catchment).
+    elec = (
+        elec.sort_values("r1_total_valid", ascending=False)
+            .drop_duplicates(subset="ubigeo", keep="first")
+    )
 
     # Friendly label
     elec["_label"] = (
@@ -2418,12 +2432,9 @@ def show_bloc_sankey():
     levels26, _ = load_data_2026()
     df21 = levels21["distrito"]["df"][["ubigeo", "r1_winner", "total_pop"]].copy()
     df26 = levels26["distrito"]["df"][["ubigeo", "r1_winner"]].copy()
+    # Both dfs are already domestic-only and RENIEC→INEI remapped by their load functions
 
-    # Domestic districts only
-    df21 = df21[df21["ubigeo"].str[:2].astype(int) < 90]
-    df26 = df26[df26["ubigeo"].str[:2].astype(int) < 90]
-
-    # Merge on common ubigeos
+    # Merge on common INEI ubigeos
     merged = df21.merge(df26, on="ubigeo", suffixes=("_21", "_26"))
     merged = merged.dropna(subset=["r1_winner_21", "r1_winner_26"])
 
