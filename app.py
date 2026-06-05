@@ -330,6 +330,18 @@ STRINGS = {
     "vote_pct":             {"es": "Porcentaje de voto",                 "en": "Vote share"},
     "margin":               {"es": "Margen",                             "en": "Margin"},
     "swing":                {"es": "Swing (R1→R2)",                      "en": "Swing (R1→R2)"},
+    "tilt":                 {"es": "Inclinación izq./der.",               "en": "Left/right tilt"},
+    "tilt_help":            {
+        "es": ("Colorea cada distrito por la razón **voto-izquierda ÷ voto-derecha** "
+               "(suma de bloques, 1ª vuelta). Rojo = más a la izquierda, amarillo = más "
+               "a la derecha, pálido = parejo. El bloque de centro se excluye, así que "
+               "esto mide solo el eje izquierda–derecha del voto polarizado."),
+        "en": ("Colors each district by the **left-vote ÷ right-vote** ratio "
+               "(bloc sums, first round). Red = more left, yellow = more right, "
+               "pale = even. The center bloc is excluded, so this measures only the "
+               "left–right axis of the polarized vote."),
+    },
+    "tilt_hover":           {"es": "log(izq/der)",                        "en": "log(left/right)"},
     "bloc_shift":           {"es": "Cambio de bloque (2021→2026)",        "en": "Bloc shift (2021→2026)"},
     "bloc_label":           {"es": "Bloque",                             "en": "Bloc"},
     "bloc_left":            {"es": "Izquierda",                          "en": "Left"},
@@ -2929,18 +2941,21 @@ def main():
             is_r2 = vuelta == t("second_round")
 
         if election_year == "2026":
-            mode_opts = [t("winner"), t("vote_pct")]
+            mode_opts = [t("winner"), t("vote_pct"), t("tilt")]
         elif is_r2:
-            mode_opts = [t("winner"), t("vote_pct"), t("margin"), t("swing")]
+            mode_opts = [t("winner"), t("vote_pct"), t("margin"), t("swing"), t("tilt")]
         else:
-            mode_opts = [t("winner"), t("vote_pct")]
+            mode_opts = [t("winner"), t("vote_pct"), t("tilt")]
         mode = st.selectbox(t("color_mode"), mode_opts, key="mode", help=t("mode_help"))
         # Normalise mode back to a stable internal key regardless of language
         _mode_to_key = {
             t("winner"): "winner", t("vote_pct"): "vote_pct",
             t("margin"): "margin", t("swing"): "swing",
+            t("tilt"): "tilt",
         }
         mode_key = _mode_to_key.get(mode, mode)
+        if mode_key == "tilt":
+            st.caption(t("tilt_help"))
 
         cand_abbr = None
         if mode_key == "vote_pct":
@@ -3121,6 +3136,27 @@ def main():
         color_map = None
         map_title = f"{t('single_layer')}: {overlay_label}"
 
+    elif mode_key == "tilt":
+        # Left/right tilt = log( left_bloc_share ÷ right_bloc_share ), R1 bloc sums.
+        # Center bloc excluded by construction. Works for both elections via the
+        # year-specific bloc-pct prefix; +0.5 guards the few zero-bloc districts.
+        prefix = "r1_2026" if election_year == "2026" else "r1_2021"
+        left  = pd.to_numeric(plot_df.get(f"{prefix}_left_pct", np.nan),  errors="coerce")
+        right = pd.to_numeric(plot_df.get(f"{prefix}_right_pct", np.nan), errors="coerce")
+        plot_df["_tilt"] = np.log((left + 0.5) / (right + 0.5))
+        color_col = "_tilt"
+        color_label = t("tilt")
+        absmax = float(plot_df["_tilt"].abs().quantile(0.95))
+        if not np.isfinite(absmax) or absmax == 0:
+            absmax = 1.0
+        # Low (right) = yellow → pale → high (left) = red
+        colorscale = [[0.0, "#F4D03F"], [0.5, "#FBFBF5"], [1.0, "#C1121F"]]
+        range_color = [-absmax, absmax]
+        categorical = False
+        color_map = None
+        _yr = "2026" if election_year == "2026" else "2021"
+        map_title = f"{t('tilt')} — {_yr} R1"
+
     elif election_year == "2026":
         if mode_key == "winner":
             color_col = "r1_winner"
@@ -3209,7 +3245,9 @@ def main():
             map_title = f"{t('vote_pct')} — {name} ({t('first_round')})"
 
     # Hover extras
-    if bivariate_on and bivariate_sec_col:
+    if mode_key == "tilt":
+        hover_extra = {"_tilt": ":.2f"}
+    elif bivariate_on and bivariate_sec_col:
         hover_extra = {
             bivariate_primary_col: ":.2f",
             bivariate_sec_col: ":.2f",
