@@ -2418,29 +2418,97 @@ def show_scatter(df, level_key: str = "distrito"):
 
 
 # ─── National summary bar ─────────────────────────────────────────────────────
-def show_bloc_sankey():
-    """Sankey diagram: winning bloc in 2021 R1 → winning bloc in 2026 R1.
+def _sankey_fig(merged: pd.DataFrame, _3order, _3colors, _3labels, _lang, title: str) -> go.Figure:
+    """Build a Plotly Sankey from a pre-filtered merged district dataframe."""
+    pop_total = merged["total_pop"].sum()
+    flows = (
+        merged.groupby(["bloc_21", "bloc_26"])["total_pop"]
+        .sum()
+        .reset_index(name="pop")
+    )
+    _lbl3 = _3labels[_lang]
+    node_labels = (
+        [f"{_lbl3[b]} (2021)" for b in _3order]
+        + [f"{_lbl3[b]} (2026)" for b in _3order]
+    )
+    node_colors = [_3colors[b] for b in _3order] * 2
+    bloc_idx = {b: i for i, b in enumerate(_3order)}
 
-    Only districts that appear in both datasets (matched by ubigeo) are included.
-    Flow width = number of districts; tooltip shows count and % of matched total.
+    source, target, value, link_colors = [], [], [], []
+    for _, row in flows.iterrows():
+        v = int(row["pop"])
+        if v == 0:
+            continue
+        s   = bloc_idx[row["bloc_21"]]
+        tgt = bloc_idx[row["bloc_26"]] + 3
+        source.append(s); target.append(tgt); value.append(v)
+        base = _3colors[row["bloc_21"]]
+        r_, g_, b_ = int(base[1:3], 16), int(base[3:5], 16), int(base[5:7], 16)
+        link_colors.append(f"rgba({r_},{g_},{b_},0.35)")
+
+    fig = go.Figure(go.Sankey(
+        arrangement="snap",
+        node=dict(pad=18, thickness=22, label=node_labels, color=node_colors,
+                  hovertemplate="%{label}<br>%{value:,.0f} hab.<extra></extra>"),
+        link=dict(
+            source=source, target=target, value=value, color=link_colors,
+            hovertemplate=(
+                "%{source.label} → %{target.label}<br>"
+                "<b>%{value:,.0f}</b> hab. (%{customdata:.1f}%)<extra></extra>"
+            ),
+            customdata=[v / pop_total * 100 for v in value],
+        ),
+    ))
+    fig.update_layout(
+        title=dict(text=title, font=dict(size=13), x=0.01, xanchor="left"),
+        height=440, margin=dict(l=10, r=10, t=55, b=10),
+        font=dict(size=13, color="black"),
+    )
+    return fig
+
+
+def show_bloc_sankey():
+    """Two Sankey diagrams:
+    1. All matched districts (2021 R1 → 2026 R1 bloc flow)
+    2. Subset: districts where the R1 winner won by >10pp in BOTH elections
     """
     _lang = st.session_state.get("lang", "es")
-    _bl = BLOC_LABELS[_lang]
 
     # Load both datasets (cached — no extra cost)
     levels21, _ = load_data()
     levels26, _ = load_data_2026()
-    df21 = levels21["distrito"]["df"][["ubigeo", "r1_winner", "total_pop"]].copy()
-    df26 = levels26["distrito"]["df"][["ubigeo", "r1_winner"]].copy()
-    # Both dfs are already domestic-only and RENIEC→INEI remapped by their load functions
+    df21 = levels21["distrito"]["df"].copy()
+    df26 = levels26["distrito"]["df"].copy()
 
-    # Merge on common INEI ubigeos
-    merged = df21.merge(df26, on="ubigeo", suffixes=("_21", "_26"))
+    # ── Compute 2021 R1 winner margin ────────────────────────────────────────
+    r1_pct_21 = [c for c in df21.columns if c.startswith("r1_pct_")
+                 and c.replace("r1_pct_", "") in CANDIDATES_R1]
+    if r1_pct_21:
+        top2_21 = df21[r1_pct_21].apply(pd.to_numeric, errors="coerce").apply(
+            lambda row: row.nlargest(2).values, axis=1)
+        df21["margin_21"] = top2_21.apply(
+            lambda v: float(v[0] - v[1]) if len(v) >= 2 else np.nan)
+    else:
+        df21["margin_21"] = np.nan
+
+    # ── Compute 2026 R1 winner margin ────────────────────────────────────────
+    r1_pct_26 = [c for c in df26.columns if c.startswith("r1_pct_")
+                 and not c.endswith(tuple(["_total_valid","_blank","_null"]))]
+    if r1_pct_26:
+        top2_26 = df26[r1_pct_26].apply(pd.to_numeric, errors="coerce").apply(
+            lambda row: row.nlargest(2).values, axis=1)
+        df26["margin_26"] = top2_26.apply(
+            lambda v: float(v[0] - v[1]) if len(v) >= 2 else np.nan)
+    else:
+        df26["margin_26"] = np.nan
+
+    # ── Merge ────────────────────────────────────────────────────────────────
+    merged = df21[["ubigeo", "r1_winner", "total_pop", "margin_21"]].merge(
+        df26[["ubigeo", "r1_winner", "margin_26"]], on="ubigeo", suffixes=("_21", "_26"))
     merged = merged.dropna(subset=["r1_winner_21", "r1_winner_26"])
 
-    # Map winner → 5-bucket bloc, then collapse to 3
     _to3 = {"left": "left", "center_left": "center",
-             "center": "center", "center_right": "center", "right": "right"}
+            "center": "center", "center_right": "center", "right": "right"}
     _3order = ["left", "center", "right"]
     _3labels = {
         "es": {"left": "Izquierda", "center": "Centro", "right": "Derecha"},
@@ -2451,88 +2519,51 @@ def show_bloc_sankey():
     merged["bloc_21"] = merged["r1_winner_21"].map(BLOCS_2021).map(_to3)
     merged["bloc_26"] = merged["r1_winner_26"].map(BLOCS_2026).map(_to3)
     merged = merged.dropna(subset=["bloc_21", "bloc_26"])
-
     merged["total_pop"] = pd.to_numeric(merged["total_pop"], errors="coerce").fillna(0)
-    n_total = len(merged)
-    pop_total = merged["total_pop"].sum()
-    if n_total == 0:
+
+    if len(merged) == 0:
         st.info("No hay distritos con datos en ambas elecciones.")
         return
 
-    # Build flow matrix weighted by population
-    flows = (
-        merged.groupby(["bloc_21", "bloc_26"])["total_pop"]
-        .sum()
-        .reset_index(name="pop")
+    n_all = len(merged)
+    pop_all = merged["total_pop"].sum()
+
+    # ── Sankey 1: all districts ───────────────────────────────────────────────
+    title1_es = f"Población por bloque ganador: 2021 R1 → 2026 R1  (n = {n_all:,} distritos, {pop_all/1e6:.1f}M hab.)"
+    title1_en = f"Population by winning bloc: 2021 R1 → 2026 R1  (n = {n_all:,} districts, {pop_all/1e6:.1f}M pop.)"
+    st.plotly_chart(
+        _sankey_fig(merged, _3order, _3colors, _3labels, _lang,
+                    title1_es if _lang == "es" else title1_en),
+        use_container_width=True,
     )
+    note1_es = (f"Ancho proporcional a la población (Censo 2017). "
+                f"Solo distritos domésticos con ubigeo coincidente ({n_all:,} de ~1,874).")
+    note1_en = (f"Flow width proportional to population (Census 2017). "
+                f"Domestic districts with matching ubigeo only ({n_all:,} of ~1,874).")
+    st.caption(note1_es if _lang == "es" else note1_en)
 
-    _lbl3 = _3labels[_lang]
-    node_labels = (
-        [f"{_lbl3[b]} (2021)" for b in _3order]
-        + [f"{_lbl3[b]} (2026)" for b in _3order]
+    # ── Sankey 2: "clear winner" districts (>10pp margin in both R1s) ────────
+    clear = merged[(merged["margin_21"] > 10) & (merged["margin_26"] > 10)].copy()
+    n_clear = len(clear)
+    pop_clear = clear["total_pop"].sum()
+
+    if n_clear == 0:
+        return
+
+    title2_es = (f"Solo distritos con ganador claro en ambas elecciones (margen >10pp): "
+                 f"n = {n_clear:,}, {pop_clear/1e6:.1f}M hab.")
+    title2_en = (f"Clear-winner districts only (margin >10pp in both R1s): "
+                 f"n = {n_clear:,}, {pop_clear/1e6:.1f}M pop.")
+    st.plotly_chart(
+        _sankey_fig(clear, _3order, _3colors, _3labels, _lang,
+                    title2_es if _lang == "es" else title2_en),
+        use_container_width=True,
     )
-    node_colors = [_3colors[b] for b in _3order] * 2
-
-    bloc_idx = {b: i for i, b in enumerate(_3order)}
-
-    source, target, value, link_colors = [], [], [], []
-    for _, row in flows.iterrows():
-        s = bloc_idx[row["bloc_21"]]
-        tgt = bloc_idx[row["bloc_26"]] + 3
-        v = int(row["pop"])
-        if v == 0:
-            continue
-        source.append(s)
-        target.append(tgt)
-        value.append(v)
-        base = _3colors[row["bloc_21"]]
-        r, g, b_ = int(base[1:3], 16), int(base[3:5], 16), int(base[5:7], 16)
-        link_colors.append(f"rgba({r},{g},{b_},0.35)")
-
-    fig = go.Figure(go.Sankey(
-        arrangement="snap",
-        node=dict(
-            pad=18, thickness=22,
-            label=node_labels,
-            color=node_colors,
-            hovertemplate="%{label}<br>%{value:,.0f} hab.<extra></extra>",
-        ),
-        link=dict(
-            source=source,
-            target=target,
-            value=value,
-            color=link_colors,
-            hovertemplate=(
-                "%{source.label} → %{target.label}<br>"
-                "<b>%{value:,.0f}</b> hab. "
-                "(%{customdata:.1f}%)<extra></extra>"
-            ),
-            customdata=[v / pop_total * 100 for v in value],
-        ),
-    ))
-
-    title_es = f"Población según bloque ganador: 2021 R1 → 2026 R1  (n = {n_total:,} distritos, {pop_total/1e6:.1f}M hab.)"
-    title_en = f"Population by winning bloc: 2021 R1 → 2026 R1  (n = {n_total:,} districts, {pop_total/1e6:.1f}M pop.)"
-    fig.update_layout(
-        title=dict(
-            text=title_es if _lang == "es" else title_en,
-            font=dict(size=13), x=0.01, xanchor="left",
-        ),
-        height=440,
-        margin=dict(l=10, r=10, t=55, b=10),
-        font=dict(size=13, color="black"),
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    note_es = (
-        f"Ancho de cada flujo proporcional a la población (Censo 2017) de los distritos. "
-        f"Solo distritos domésticos con ubigeo coincidente en ambas elecciones ({n_total:,} de ~1,874)."
-    )
-    note_en = (
-        f"Flow width proportional to district population (Census 2017). "
-        f"Domestic districts with matching ubigeo in both elections only ({n_total:,} of ~1,874)."
-    )
-    st.caption(note_es if _lang == "es" else note_en)
+    note2_es = (f"Excluye distritos con resultado fragmentado (ganador con ≤10pp sobre el 2.° lugar "
+                f"en 2021 R1 o 2026 R1). Quedan {n_clear:,} de {n_all:,} distritos.")
+    note2_en = (f"Excludes fragmented-result districts (winner ≤10pp over 2nd place "
+                f"in either 2021 R1 or 2026 R1). {n_clear:,} of {n_all:,} districts remain.")
+    st.caption(note2_es if _lang == "es" else note2_en)
 
 
 def show_national_totals(df, election_year="2021"):
