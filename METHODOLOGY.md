@@ -172,16 +172,82 @@ python scripts/build_election_2026_r1_distrito.py
 
 ---
 
-## 7. Known open issues
+## 7. Ideological bloc classification
 
-- **Lima/Callao RENIEC codes**: ~980 of 2,089 2026 election districts use RENIEC sub-codes not present in the INEI GeoJSON. A RENIEC→INEI crosswalk for Lima/Callao would recover these.
+Each presidential candidate is assigned to one of **5 buckets** — `left`,
+`center_left`, `center`, `center_right`, `right` — in the `BLOCS_2021` and
+`BLOCS_2026` dicts in `app.py`. **`app.py` is the single source of truth**;
+this table is documentation, keep it in sync if the dicts change.
+
+For the Sankeys, the tilt map, and the realignment deltas, the 5 buckets are
+**collapsed to 3**: `center_left` + `center` + `center_right` → **center**; the
+`left` and `right` buckets stay as-is. So in 3-bloc terms, **left** = only the
+`left` bucket, **right** = only the `right` bucket.
+
+Sources: academic consensus, Ipsos / El Comercio 2021 voter-perception survey,
+and the Intervención y Coyuntura 2026 left/right classification, plus the
+user's own corrections (logged below).
+
+### 2021 R1
+
+| Bloc | Parties (abbr — candidate) |
+|------|---------------------------|
+| **left** | PL — Castillo · JP — Mendoza · FA — Arana |
+| **center_left** | PNP — Humala · RUNA — Gálvez |
+| **center** | AP — Lescano · PM — Guzmán · SP — Salaverry · DD — Alcántara · UPP — Vega · PPS — Santos |
+| **center_right** | PPC — Beingolea · VN — Forsyth · APP — Acuña |
+| **right** | FP — Fujimori · RP — López Aliaga · AvP — De Soto · **PP — Urresti** |
+
+### 2026 R1
+
+| Bloc | Parties (abbr — candidate) |
+|------|---------------------------|
+| **left** | JxP — Sánchez · PL — Cerrón · AEV — Atencio · **AN — López-Chau** |
+| **center_left** | FE21 — Olivera |
+| **center** | CoopP — Lescano · Obras — Belmont · PBG — Nieto · PxT — Álvarez · PLG — Pérez Tello · SICREO — Espá · SP20 — Forsyth · Morado — Guevara · PP1 — Vizcarra · PDV — González · PDU · UCD — Fernández |
+| **center_right** | Podemos — Luna · APRA — Valderrama · APP — Acuña · PPP — Caller · UN — Chiabra · PID — Grozo |
+| **right** | FP — Fujimori · RP — López Aliaga · AvP — Williams · FyL — Molinelli |
+
+### Judgment calls / user overrides (revisit if challenged)
+
+- **PP / Urresti (2021) → right** (user override, was center): Podemos Perú,
+  right-populist law-and-order platform. ~5.5% nationally; moving it lifts the
+  2021 right base from ~35% to ~41% pop-weighted.
+- **AN / López-Chau (2026) → left** (user override; some sources call Ahora
+  Nación "center" / "center-left"). Materially affects the right→left flow
+  count in the winner-based Sankey (López-Chau won several Lima/Callao
+  districts De Soto won in 2021).
+- **AvP → right** both years, though it ran different candidates (De Soto 2021,
+  Williams 2026).
+- **APP / Acuña → center_right** both years (some would call it right-populist).
+- **AEV (2026)**: Ronald Atencio for the Venceremos alliance — *not* Antauro
+  Humala (common misattribution). Left.
+
+### Caveats baked into the analysis
+
+- **Winner-by-party vs winner-by-bloc-sum diverge.** The Sankey uses the single
+  top *party* mapped to its bloc; the tilt map and realignment deltas use the
+  *summed* bloc vote share. A district where FP leads as the single largest
+  party but the center parties out-total the right will read "right" in the
+  Sankey and "center" in the bloc-sum views. This is real, not a bug — see the
+  REALIGNMENT_DESIGN.md note.
+- **Fragmented R1 winners.** Many 2021 R1 district "winners" took only ~15% in a
+  split field, so winner-based classification is noisy; the bloc-sum measures
+  (tilt, deltas) are more robust. The ">10pp margin in both rounds" Sankey
+  filter exists to isolate the unambiguous cases.
+
+---
+
+## 8. Known open issues
+
+- **Lima/Callao RENIEC codes — RESOLVED**: both `load_data()` and `load_data_2026()` now remap election ubigeos RENIEC→INEI via the census `reniec` column, so ~1,874 districts (29.4M people) match the GeoJSON. `load_data_2026()` also dedupes the 2 RENIEC→INEI collisions (keeps the larger-vote row). The only remaining unmatched rows are the ~12 genuinely new post-2017 districts (next bullet).
 - **New 2026 domestic districts** (~15 genuinely new districts created between 2021 and 2026): no 2021 election data. Imputation via point-in-polygon against the 2021 district layer would assign each new district's results to its parent.
 - **2026 R2 data**: second round is June 7 2026. Once ONPE publishes results, run `build_election_2026_r1_distrito.py` variant for R2 and extend the app.
 - **Province/dept GeoJSONs**: still use 2017-era aggregation. Rebuilding from the 2023 district layer would pick up the 17 new districts.
 
 ---
 
-## 8. Deployment
+## 9. Deployment
 
 Streamlit Community Cloud, repo: `nuritmb/mapa-estadistico-peru`.  
 Password-gated via `st.secrets["app_password"]` (set in Streamlit Cloud dashboard, not in repo).  
