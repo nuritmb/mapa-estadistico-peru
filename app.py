@@ -113,7 +113,7 @@ BLOCS_2021 = {
     "PNP":  "center_left",  # Humala — nationalist left (moderated)
     "RUNA": "center_left",  # Gálvez — Andean indigenist left
     "AP":   "center",       # Lescano — social-Christian center
-    "PP":   "center",       # Urresti — populist center
+    "PP":   "right",        # Urresti — Podemos Perú (right-populist, law-and-order)
     "PM":   "center",       # Guzmán — liberal center
     "SP":   "center",       # Salaverry — centrist
     "DD":   "center",       # Alcántara — populist
